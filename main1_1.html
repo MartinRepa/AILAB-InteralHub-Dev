@@ -1,0 +1,1957 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <link rel="icon" href="data:,">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tirana Bank — AI Lab Hub</title>
+
+  <!-- Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Lottie Web -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
+
+  <style>
+    :root{
+      --tb-blue:#254185;
+      --tb-yellow:#f4b928;
+      --tb-gray:#7d858c;
+      --tb-red:#c92539;
+
+      --bg:#ffffff;
+      --panel:#ffffff;
+      --panel2:#f7f9ff;
+      --text:#0b1220;
+      --muted:#5b6473;
+      --line:rgba(15, 23, 42, 0.10);
+      --shadow: 0 12px 30px rgba(15, 23, 42, 0.10);
+      --radius: 18px;
+      --focus: rgba(36,65,133,.18);
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family:"Poppins", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background:#fff;
+      color:var(--text);
+      overflow-x:hidden;
+    }
+    a{ color:inherit; text-decoration:none; }
+    .container{ width:min(1200px, 92vw); margin:0 auto; }
+
+    /* Top bar */
+    .topbar{
+      position:sticky; top:0; z-index:20;
+      background: rgba(255,255,255,.90);
+      backdrop-filter: blur(10px);
+      border-bottom:1px solid var(--line);
+    }
+    .topbar .inner{
+      display:flex; align-items:center; gap:14px;
+      padding:12px 0;
+    }
+    .brand{
+      display:flex; align-items:center; gap:10px;
+      font-weight:800;
+      letter-spacing:.2px;
+    }
+    .logo-dot{
+      width:12px; height:12px; border-radius:50%;
+      background: var(--tb-yellow);
+      box-shadow: 0 0 0 6px rgba(244,185,40,.20);
+    }
+    .nav{
+      margin-left:auto;
+      display:flex; gap:10px; align-items:center;
+    }
+    .nav a{
+      font-size:13px;
+      padding:9px 12px;
+      border-radius:999px;
+      border:1px solid transparent;
+      color:var(--muted);
+    }
+    .nav a:hover{
+      border-color:var(--line);
+      color:var(--text);
+      background:rgba(36,65,133,.06);
+    }
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center; gap:8px;
+      padding:10px 14px;
+      border-radius:999px;
+      border:1px solid rgba(36,65,133,.22);
+      background: linear-gradient(180deg, rgba(36,65,133,.07), rgba(36,65,133,.03));
+      color:var(--text);
+      font-weight:600;
+      font-size:13px;
+      cursor:pointer;
+      transition:.15s transform ease, .15s box-shadow ease;
+    }
+    .btn:hover{ transform: translateY(-1px); box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08); }
+    .btn.primary{
+      border-color: rgba(244,185,40,.85);
+      background: linear-gradient(180deg, rgba(244,185,40,.95), rgba(244,185,40,.70));
+      color:#1a1a1a;
+    }
+    .btn.ghost{
+      border-color: rgba(15,23,42,.12);
+      background: #fff;
+      color: var(--text);
+    }
+    .burger{
+      display:none;
+      width:40px; height:40px; border-radius:12px;
+      border:1px solid var(--line);
+      background:#fff;
+      cursor:pointer;
+    }
+
+    /* Hero */
+    .hero{ padding:26px 0 10px; }
+    .hero-card{
+      position:relative;
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      background: #ffffff;
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      padding:24px;
+      min-height:340px;
+    }
+
+    /* Lottie brain background */
+    .brain-wrap{
+      position:absolute; inset:0;
+      pointer-events:none;
+      opacity:.22;
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      padding-right:24px;
+      filter: saturate(1.05);
+    }
+    @media (max-width: 820px){
+      .brain-wrap{ opacity:.14; justify-content:center; padding-right:0; }
+    }
+    #brainLottie{
+      width:min(520px, 70vw);
+      height:min(520px, 70vw);
+      transform: translateY(10px);
+    }
+
+    .kicker{
+      display:inline-flex; align-items:center; gap:10px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(15,23,42,.10);
+      background:rgba(36,65,133,.04);
+      color:var(--muted);
+      font-size:12px;
+      margin-bottom:12px;
+      position:relative;
+      z-index:2;
+    }
+    .kicker .pill{ width:8px; height:8px; border-radius:50%; background:var(--tb-yellow); }
+
+    h1{ margin:0 0 10px; font-size:34px; line-height:1.12; letter-spacing:-.4px; position:relative; z-index:2; }
+    .sub{
+      margin:0 0 16px;
+      color:var(--muted);
+      font-size:14px;
+      max-width:65ch;
+      position:relative;
+      z-index:2;
+    }
+    .hero-actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:6px; position:relative; z-index:2; }
+
+    .mini{
+      display:grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap:10px;
+      margin-top:14px;
+      position:relative;
+      z-index:2;
+    }
+    .mini .mini-card{
+      border:1px solid rgba(15,23,42,.08);
+      background: rgba(36,65,133,.03);
+      border-radius:16px;
+      padding:10px 12px;
+      font-size:12px;
+      color:var(--muted);
+      display:flex; gap:10px; align-items:center;
+    }
+    .mini .ic{
+      width:28px; height:28px; border-radius:12px;
+      border:1px solid rgba(36,65,133,.12);
+      background:
+        radial-gradient(10px 10px at 30% 30%, rgba(244,185,40,.85), transparent 60%),
+        linear-gradient(180deg, rgba(255,255,255,.8), rgba(255,255,255,.4));
+    }
+    .mini strong{ color:var(--text); font-weight:700; }
+
+    /* Sections */
+    .section{ padding:16px 0; }
+    .section-head{
+      display:flex; align-items:flex-end; justify-content:space-between;
+      gap:12px;
+      margin:6px 0 12px;
+    }
+    .section h2{ margin:0; font-size:18px; letter-spacing:-.2px; }
+    .hint{ color:var(--muted); font-size:12px; }
+
+    .tabs{ display:flex; gap:10px; flex-wrap:wrap; margin:10px 0 14px; }
+    .tab{
+      padding:8px 12px;
+      border-radius:999px;
+      border:1px solid rgba(15,23,42,.12);
+      background:#fff;
+      color:var(--muted);
+      cursor:pointer;
+      font-size:12px;
+      user-select:none;
+    }
+    .tab.active{
+      border-color: rgba(244,185,40,.75);
+      color: var(--text);
+      background: rgba(244,185,40,.12);
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap:12px;
+    }
+    .card{
+      grid-column: span 4;
+      border:1px solid rgba(15,23,42,.10);
+      border-radius: var(--radius);
+      background: #ffffff;
+      box-shadow: 0 10px 22px rgba(15,23,42,.08);
+      padding:14px;
+      position:relative;
+      overflow:hidden;
+      min-height:140px;
+      transition:.15s transform ease, .15s box-shadow ease, .15s border-color ease;
+    }
+    .card:hover{
+      transform: translateY(-2px);
+      border-color: rgba(244,185,40,.55);
+      box-shadow: 0 14px 28px rgba(15,23,42,.10);
+    }
+    .badge{
+      font-size:11px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(15,23,42,.10);
+      background: rgba(36,65,133,.04);
+      color:var(--muted);
+      white-space:nowrap;
+    }
+    .title{ font-weight:800; font-size:13px; line-height:1.25; margin:0; }
+    .desc{ margin:6px 0 10px; color:var(--muted); font-size:12px; line-height:1.35; }
+    .meta{
+      display:flex; justify-content:space-between; align-items:center;
+      color:var(--muted);
+      font-size:11px;
+      gap:10px;
+    }
+    .card .corner-ic{
+      position:absolute;
+      top:12px; right:12px;
+      width:34px; height:34px;
+      border-radius:14px;
+      border:1px solid rgba(15,23,42,.10);
+      background:
+        radial-gradient(10px 10px at 30% 30%, rgba(244,185,40,.75), transparent 60%),
+        radial-gradient(14px 14px at 70% 70%, rgba(36,65,133,.35), transparent 60%),
+        linear-gradient(180deg, rgba(36,65,133,.06), rgba(36,65,133,.02));
+      opacity:.95;
+      pointer-events:none;
+    }
+    .progress{
+      height:8px;
+      border-radius:999px;
+      background: rgba(15,23,42,.08);
+      overflow:hidden;
+      margin:10px 0 4px;
+    }
+    .progress > div{
+      height:100%;
+      width:40%;
+      border-radius:999px;
+      background: linear-gradient(90deg, rgba(244,185,40,.95), rgba(36,65,133,.85));
+    }
+
+    .split{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:12px;
+    }
+    .block{
+      border:1px solid rgba(15,23,42,.10);
+      border-radius: var(--radius);
+      background: #ffffff;
+      box-shadow: 0 10px 22px rgba(15,23,42,.08);
+      padding:14px;
+      min-height:160px;
+    }
+    .block h3{ margin:0 0 8px; font-size:13px; font-weight:800; }
+    .list{ margin:0; padding-left:16px; color:var(--muted); font-size:12px; line-height:1.55; }
+
+    /* Use case submission */
+    .form-grid{
+      display:grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap:12px;
+      align-items:stretch;
+    }
+    .field{ display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
+    label{ font-size:12px; color:var(--muted); }
+    input, textarea, select{
+      font-family:inherit;
+      font-size:13px;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid rgba(15,23,42,.12);
+      outline:none;
+      background:#fff;
+    }
+    input:focus, textarea:focus, select:focus{
+      border-color: rgba(36,65,133,.35);
+      box-shadow: 0 0 0 4px var(--focus);
+    }
+    textarea{ min-height:110px; resize:vertical; }
+    .idea{
+      border:1px solid rgba(15,23,42,.10);
+      border-radius:16px;
+      padding:10px 12px;
+      margin-bottom:10px;
+      background: rgba(36,65,133,.02);
+    }
+    .idea .row{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:4px; }
+    .idea strong{ font-size:12px; }
+    .tag{
+      font-size:11px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(15,23,42,.10);
+      background:#fff;
+      color:var(--muted);
+      white-space:nowrap;
+    }
+
+    /* Footer */
+    footer{
+      margin-top:14px;
+      padding:18px 0 30px;
+      border-top:1px solid var(--line);
+      color:var(--muted);
+      font-size:12px;
+    }
+    .footer-grid{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr .8fr;
+      gap:12px;
+    }
+    .footer-grid a{ color:var(--muted); }
+    .footer-grid a:hover{ color:var(--text); }
+
+    /* Floating assistant button */
+    .assistant-fab{
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      width: 90px;
+      height: 90px;
+      border-radius: 28px;
+      border: 1px solid rgba(15,23,42,.12);
+      background: #ffffff;
+      box-shadow: 0 16px 38px rgba(15,23,42,.18);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      z-index:60;
+      transition: transform .12s ease;
+    }
+    .assistant-fab:hover{ transform: translateY(-2px); }
+    #robotIcon{
+      width: 95px;
+      height: 95px;
+    }
+
+    .assistant-tooltip{
+      position: fixed;
+      right: 110px;
+      bottom: 30px;
+      z-index: 9999;
+      display: block;
+      animation: fadeInUp .6s ease forwards;
+    }
+
+    /* Tool logo + link */
+    .tool-head{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      margin-bottom:8px;
+    }
+
+    .tool-logo{
+      width:40px;
+      height:40px;
+      border-radius:14px;
+      border:1px solid rgba(15,23,42,.10);
+      background:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      flex:0 0 auto;
+      box-shadow: 0 10px 22px rgba(15,23,42,.06);
+    }
+
+    .tool-logo img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+    }
+
+    .tool-actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:10px;
+    }
+
+    .link-chip{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid rgba(15,23,42,.12);
+      background:#fff;
+      font-size:12px;
+      color:var(--muted);
+      transition: .12s ease;
+    }
+
+    .link-chip:hover{
+      color:var(--text);
+      border-color: rgba(244,185,40,.60);
+      box-shadow: 0 10px 22px rgba(15,23,42,.06);
+      transform: translateY(-1px);
+    }
+
+    .assistant-tooltip.show{ display: block; }
+
+    .assistant-bubble{
+      background: #ffffff;
+      border: 1px solid rgba(15,23,42,.12);
+      border-radius: 16px;
+      padding: 12px 14px;
+      font-size: 12px;
+      color: #0b1220;
+      box-shadow: 0 15px 40px rgba(15,23,42,.15);
+      max-width: 220px;
+      position: relative;
+    }
+
+    .assistant-bubble::after{
+      content: "";
+      position: absolute;
+      right: -8px;
+      bottom: 18px;
+      width: 16px;
+      height: 16px;
+      background: #ffffff;
+      border-right: 1px solid rgba(15,23,42,.12);
+      border-bottom: 1px solid rgba(15,23,42,.12);
+      transform: rotate(-45deg);
+    }
+
+    /* Rundown-style news card */
+    .news-card{
+      border-radius: 22px;
+      background: #f5f6f8;
+      padding: 14px;
+      box-shadow: 0 18px 40px rgba(15,23,42,.12);
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      min-height: 320px;
+    }
+
+    .news-media{
+      width:100%;
+      height:160px;
+      border-radius:16px;
+      overflow:hidden;
+      background:#e5e7eb;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border: 1px solid rgba(15,23,42,.06);
+    }
+
+    .news-media img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+    }
+
+    .news-headline{
+      font-size:18px;
+      font-weight:800;
+      line-height:1.15;
+      letter-spacing:-.3px;
+    }
+
+    .news-sub{
+      font-size:13px;
+      color:#5b6473;
+      margin-top:4px;
+    }
+
+    .news-author{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      margin-top:6px;
+      font-size:12px;
+      color:#5b6473;
+      flex-wrap:wrap;
+    }
+
+    .news-author img{
+      width:26px;
+      height:26px;
+      border-radius:50%;
+      object-fit:cover;
+      border:2px solid #fff;
+      margin-left:-6px;
+    }
+
+    .news-author img:first-child{ margin-left:0; }
+
+    .news-link{
+      margin-top:auto;
+      display:inline-block;
+      font-size:12px;
+      font-weight:700;
+      color:var(--tb-blue);
+    }
+    .news-link:hover{ text-decoration:underline; }
+
+    /* Newsletter cards */
+    .nl-card{
+      border-radius: 22px;
+      background: #ffffff;
+      border:1px solid rgba(15,23,42,.10);
+      box-shadow: 0 10px 22px rgba(15,23,42,.08);
+      padding: 14px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      min-height: 220px;
+      position:relative;
+      overflow:hidden;
+      transition: .15s transform ease, .15s box-shadow ease, .15s border-color ease;
+    }
+    .nl-card:hover{
+      transform: translateY(-2px);
+      border-color: rgba(244,185,40,.55);
+      box-shadow: 0 14px 28px rgba(15,23,42,.10);
+    }
+    .nl-cover{
+      height: 130px;
+      border-radius: 16px;
+      background: rgba(36,65,133,.06);
+      overflow:hidden;
+      border:1px solid rgba(15,23,42,.06);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .nl-cover img{ width:100%; height:100%; object-fit:cover; }
+    .nl-title{ font-weight:800; font-size:13px; line-height:1.25; margin:0; }
+    .nl-summary{ color:var(--muted); font-size:12px; line-height:1.35; margin:0; }
+    .nl-meta{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .nl-chip{
+      font-size:11px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(15,23,42,.10);
+      background: rgba(36,65,133,.04);
+      color:var(--muted);
+      white-space:nowrap;
+    }
+
+    /* Training filters */
+    .filters{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin: 10px 0 14px;
+      align-items:center;
+    }
+    .filters select{
+      padding:9px 12px;
+      border-radius:999px;
+      border:1px solid rgba(15,23,42,.12);
+      background:#fff;
+      font-size:12px;
+      color:var(--text);
+      min-width: 150px;
+    }
+
+    /* Chat modal */
+    .modal-backdrop{
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,.35);
+      opacity: 0;
+      pointer-events: none;
+      transition: .18s opacity ease;
+      z-index: 70;
+    }
+    .modal-backdrop.open{
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .chat-modal{
+      position: fixed;
+      right: 18px;
+      bottom: 92px;
+      width: min(420px, calc(100vw - 36px));
+      height: 560px;
+      border-radius: 22px;
+      background: #fff;
+      border: 1px solid rgba(15,23,42,.12);
+      box-shadow: 0 22px 60px rgba(15,23,42,.24);
+      overflow: hidden;
+      transform: translateY(10px);
+      opacity: 0;
+      pointer-events: none;
+      transition: .18s transform ease, .18s opacity ease;
+      z-index: 80;
+      display:flex;
+      flex-direction:column;
+    }
+    .chat-modal.open{
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .chat-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding: 12px 12px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(36,65,133,.06), rgba(36,65,133,.02));
+    }
+    .chat-title{
+      display:flex; align-items:center; gap:10px;
+      font-weight:800; font-size:13px;
+      min-width: 0;
+    }
+    .chat-title small{
+      display:block; font-weight:500; color:var(--muted); font-size:11px;
+      margin-top:2px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 220px;
+    }
+    .chat-mini-robot{
+      width: 34px;
+      height: 34px;
+      border-radius: 14px;
+      border: 1px solid rgba(15,23,42,.10);
+      background: #fff;
+      display:flex; align-items:center; justify-content:center;
+      overflow:hidden;
+      flex:0 0 auto;
+    }
+    #robotHeader{ width: 34px; height: 34px; }
+    .chat-close{
+      width: 38px; height: 38px;
+      border-radius: 14px;
+      border: 1px solid rgba(15,23,42,.12);
+      background:#fff;
+      cursor:pointer;
+      flex:0 0 auto;
+    }
+    .chat-mode{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      margin-left:auto;
+    }
+    .chat-mode select{
+      padding:7px 10px;
+      border-radius:999px;
+      border:1px solid rgba(15,23,42,.12);
+      background:#fff;
+      font-size:12px;
+      color:var(--text);
+      max-width: 160px;
+    }
+
+    .chat-body{
+      padding: 12px;
+      overflow:auto;
+      flex: 1;
+      background:
+        radial-gradient(800px 380px at 18% 0%, rgba(36,65,133,.06), transparent 60%),
+        radial-gradient(520px 320px at 100% 10%, rgba(244,185,40,.06), transparent 55%),
+        #fff;
+    }
+    .msg{
+      max-width: 86%;
+      padding: 10px 12px;
+      border-radius: 16px;
+      margin-bottom: 10px;
+      font-size: 12.5px;
+      line-height: 1.35;
+      border: 1px solid rgba(15,23,42,.10);
+      box-shadow: 0 10px 22px rgba(15,23,42,.06);
+      white-space: pre-wrap;
+    }
+    .msg.bot{
+      background: rgba(36,65,133,.03);
+      color: var(--text);
+      border-top-left-radius: 8px;
+    }
+    .msg.user{
+      margin-left:auto;
+      background: rgba(244,185,40,.14);
+      border-top-right-radius: 8px;
+    }
+
+    .chat-footer{
+      border-top: 1px solid var(--line);
+      padding: 10px;
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      background:#fff;
+    }
+    .chat-input{
+      flex: 1;
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      border: 1px solid rgba(15,23,42,.12);
+      border-radius: 16px;
+      padding: 8px 10px;
+      background: #fff;
+    }
+    .chat-input input{
+      width: 100%;
+      border: none;
+      outline: none;
+      font-size: 13px;
+      background: transparent;
+    }
+
+    /* Copilot Studio embed in chat */
+    .copilot-embed{
+      display:none;
+      height: 100%;
+      width: 100%;
+      border: 0;
+      border-radius: 16px;
+      background:#fff;
+    }
+    .chat-embed-wrap{
+      display:none;
+      padding:12px;
+      height:100%;
+    }
+    .chat-embed-wrap.open{
+      display:block;
+      flex:1;
+      overflow:hidden;
+      background:
+        radial-gradient(800px 380px at 18% 0%, rgba(36,65,133,.06), transparent 60%),
+        radial-gradient(520px 320px at 100% 10%, rgba(244,185,40,.06), transparent 55%),
+        #fff;
+    }
+    .chat-body.hide{ display:none; }
+
+    @keyframes fadeInUp{
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 980px){
+      .nav{ display:none; }
+      .burger{ display:inline-flex; align-items:center; justify-content:center; }
+      .grid .card{ grid-column: span 6; }
+      .split{ grid-template-columns: 1fr; }
+      .form-grid{ grid-template-columns: 1fr; }
+    }
+    @media (max-width: 620px){
+      h1{ font-size: 28px; }
+      .grid .card{ grid-column: span 12; }
+      .mini{ grid-template-columns: 1fr; }
+      .footer-grid{ grid-template-columns: 1fr; }
+      .chat-modal{ height: 600px; }
+      .chat-title small{ max-width: 170px; }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="container">
+      <div class="inner">
+        <div class="brand">
+          <span class="logo-dot"></span>
+          <span>Tirana Bank — AI Lab Hub</span>
+        </div>
+
+        <nav class="nav" aria-label="Top navigation">
+          <a href="#tools">AI Tools</a>
+          <a href="#learning">Learning</a>
+          <a href="#training">Training</a>
+          <a href="#newsletters">Newsletters</a>
+          <a href="#usecases">Use Cases</a>
+          <a href="#governance">Governance</a>
+          <a href="#champions">Champions</a>
+          <a href="#news">News</a>
+          <a href="#impact">Impact</a>
+          <button class="btn" onclick="document.querySelector('#usecases').scrollIntoView({behavior:'smooth'})">Submit Idea</button>
+        </nav>
+
+        <button class="burger" aria-label="Menu">☰</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <header class="hero">
+    <div class="container">
+      <section class="hero-card">
+        <div class="brain-wrap" aria-hidden="true">
+          <div id="brainLottie"></div>
+        </div>
+
+        <div class="kicker"><span class="pill"></span><span>Internal • Secure • Practical</span></div>
+        <h1>AI that helps staff work smarter — safely.</h1>
+        <p class="sub">
+          One place for AI tools, short courses, governance, and real banking use cases — designed for fast adoption.
+        </p>
+
+        <div class="hero-actions">
+          <button class="btn primary" onclick="document.querySelector('#learning').scrollIntoView({behavior:'smooth'})">Start Learning</button>
+          <button class="btn" onclick="document.querySelector('#tools').scrollIntoView({behavior:'smooth'})">Explore AI Tools</button>
+          <button class="btn" onclick="document.querySelector('#usecases').scrollIntoView({behavior:'smooth'})">Suggest a Use Case</button>
+        </div>
+
+        <div class="mini">
+          <div class="mini-card"><span class="ic"></span><span><strong>Role paths</strong><br/>Front desk → Risk → Ops</span></div>
+          <div class="mini-card"><span class="ic"></span><span><strong>Safe prompts</strong><br/>Templates & checklists</span></div>
+          <div class="mini-card"><span class="ic"></span><span><strong>Track progress</strong><br/>Completion & quizzes</span></div>
+        </div>
+      </section>
+    </div>
+  </header>
+
+  <!-- Role-based Recommended -->
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <h2>Recommended for you</h2>
+          <div class="hint">Pick a role — the hub adapts (simple personalization).</div>
+        </div>
+        <div class="hint">Mock data • easy to plug into backend later</div>
+      </div>
+
+      <div class="tabs" id="roleTabs"></div>
+      <div class="grid" id="recommendedGrid"></div>
+    </div>
+  </section>
+
+  <!-- AI Tools -->
+  <section class="section" id="tools">
+    <div class="container">
+      <div class="section-head">
+        <h2>AI Tools at Tirana Bank</h2>
+        <div class="hint">Quick start + safe usage + examples</div>
+      </div>
+      <div class="grid" id="toolsGrid"></div>
+    </div>
+  </section>
+
+  <!-- Learning -->
+  <section class="section" id="learning">
+    <div class="container">
+      <div class="section-head">
+        <h2>Learning Center</h2>
+        <div class="hint">Short courses • progress • quizzes</div>
+      </div>
+      <div class="grid" id="learningGrid"></div>
+    </div>
+  </section>
+
+  <!-- Training Library (NEW) -->
+  <section class="section" id="training">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <h2>Training Library</h2>
+          <div class="hint">SharePoint / YouTube / internal links • filterable</div>
+        </div>
+        <div class="hint">Mock data • later load from Blob/SharePoint</div>
+      </div>
+
+      <div class="filters">
+        <select id="trainRole">
+          <option value="all">Role: All</option>
+        </select>
+        <select id="trainType">
+          <option value="all">Type: All</option>
+        </select>
+        <select id="trainLevel">
+          <option value="all">Level: All</option>
+        </select>
+        <button class="btn ghost" id="trainReset">Reset</button>
+      </div>
+
+      <div class="grid" id="trainingGrid"></div>
+    </div>
+  </section>
+
+  <!-- Newsletter Editions (NEW) -->
+  <section class="section" id="newsletters">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <h2>AI Lab Newsletter</h2>
+          <div class="hint">Internal editions • PDF/SharePoint links</div>
+        </div>
+        <div class="hint">Make this your “bank memory”</div>
+      </div>
+      <div class="grid" id="newsletterGrid"></div>
+    </div>
+  </section>
+
+  <!-- Use case submission -->
+  <section class="section" id="usecases">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <h2>Suggest a Use Case</h2>
+          <div class="hint">Capture staff ideas → AI Lab evaluates feasibility, risk, and impact.</div>
+        </div>
+        <div class="hint">Lightweight form • later save to SharePoint list / DB</div>
+      </div>
+
+      <div class="form-grid">
+        <div class="block">
+          <h3>Submit an idea</h3>
+
+          <div class="field">
+            <label for="ucTitle">Use case title</label>
+            <input id="ucTitle" placeholder="e.g., Auto-draft responses for common customer questions" />
+          </div>
+
+          <div class="field">
+            <label for="ucArea">Department</label>
+            <select id="ucArea">
+              <option>Front Desk</option>
+              <option>Risk & Credit</option>
+              <option>Operations</option>
+              <option>Management</option>
+              <option>IT & Data</option>
+              <option>HR</option>
+              <option>Other</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="ucValue">Expected value</label>
+            <select id="ucValue">
+              <option>Save time</option>
+              <option>Reduce errors</option>
+              <option>Improve customer experience</option>
+              <option>Improve compliance</option>
+              <option>Increase revenue</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="ucDesc">Describe the problem + desired outcome</label>
+            <textarea id="ucDesc" placeholder="What is the current pain? What should AI help with? Keep it non-sensitive."></textarea>
+          </div>
+
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="btn primary" onclick="submitUseCase()">Submit</button>
+            <button class="btn" onclick="prefillUseCase()">Use Example</button>
+          </div>
+
+          <p class="hint" style="margin-top:10px;">
+            Note: do not include customer PII or account details in submissions.
+          </p>
+        </div>
+
+        <div class="block">
+          <h3>Recently suggested</h3>
+          <div id="ideasBoard"></div>
+          <div class="hint">Mock board • add voting + statuses later.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Governance + Champions -->
+  <section class="section">
+    <div class="container">
+      <div class="split">
+        <div class="block" id="governance">
+          <h3>Governance & Responsible AI</h3>
+          <ul class="list">
+            <li>What’s allowed / not allowed to paste into AI tools</li>
+            <li>Data classification cheat-sheet</li>
+            <li>EU AI Act alignment (bank-ready framing)</li>
+            <li>Incident reporting & escalation</li>
+            <li>Tool approval process</li>
+          </ul>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+            <button class="btn" onclick="alert('Mock: Open internal guidelines')">Open Guidelines</button>
+            <button class="btn" onclick="alert('Mock: Report an AI issue')">Report Issue</button>
+          </div>
+        </div>
+
+        <div class="block" id="champions">
+          <h3>AI Champions Network</h3>
+          <ul class="list">
+            <li>Become a champion (simple application + manager approval)</li>
+            <li>Monthly spotlight + recognition</li>
+            <li>Office hours & internal community</li>
+            <li>Curate prompts and use cases for your unit</li>
+          </ul>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+            <button class="btn primary" onclick="alert('Mock: Apply to be a champion')">Become a Champion</button>
+            <button class="btn" onclick="alert('Mock: Open champions playbook')">Champions Playbook</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- News + Impact -->
+  <section class="section" id="news">
+    <div class="container">
+      <div class="section-head">
+        <h2>AI News (curated)</h2>
+        <div class="hint">Short summaries only — no overload</div>
+      </div>
+      <div class="grid" id="newsGrid"></div>
+    </div>
+  </section>
+
+  <section class="section" id="impact">
+    <div class="container">
+      <div class="section-head">
+        <h2>Impact Dashboard</h2>
+        <div class="hint">Adoption + learning first, ROI later</div>
+      </div>
+
+      <div class="block">
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:4px;">
+          <div style="border:1px solid rgba(15,23,42,.10); background:rgba(36,65,133,.03); border-radius:16px; padding:10px 12px; min-width:160px;">
+            <small style="color:var(--muted); display:block; font-size:11px;">Staff trained (month)</small><strong style="font-size:16px;">312</strong>
+          </div>
+          <div style="border:1px solid rgba(15,23,42,.10); background:rgba(36,65,133,.03); border-radius:16px; padding:10px 12px; min-width:160px;">
+            <small style="color:var(--muted); display:block; font-size:11px;">Courses completed</small><strong style="font-size:16px;">1,148</strong>
+          </div>
+          <div style="border:1px solid rgba(15,23,42,.10); background:rgba(36,65,133,.03); border-radius:16px; padding:10px 12px; min-width:160px;">
+            <small style="color:var(--muted); display:block; font-size:11px;">Active champions</small><strong style="font-size:16px;">24</strong>
+          </div>
+          <div style="border:1px solid rgba(15,23,42,.10); background:rgba(36,65,133,.03); border-radius:16px; padding:10px 12px; min-width:160px;">
+            <small style="color:var(--muted); display:block; font-size:11px;">Estimated hours saved</small><strong style="font-size:16px;">680</strong>
+          </div>
+        </div>
+
+        <p class="desc" style="margin-top:10px;">
+          Keep metrics conservative and auditable (important for banking).
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <div class="brand"><span class="logo-dot"></span><span>AI Lab Team</span></div>
+          <p style="margin:10px 0 0; max-width:60ch;">
+            Contact: <a href="#">ai-lab@tiranabank.al</a> • Office hours: Tue/Thu 14:00
+          </p>
+        </div>
+        <div>
+          <strong style="color:var(--text);">Quick links</strong><br/>
+          <a href="#governance">AI Guidelines</a><br/>
+          <a href="#learning">Learning Center</a><br/>
+          <a href="#training">Training Library</a><br/>
+          <a href="#newsletters">Newsletter Editions</a><br/>
+          <a href="#usecases">Suggest Use Case</a>
+        </div>
+        <div>
+          <strong style="color:var(--text);">Maintainability</strong><br/>
+          <span>Single-page • content in one JS config • plug into SharePoint/API later</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Floating assistant icon -->
+  <button class="assistant-fab" id="assistantFab" aria-label="Open AI Assistant">
+    <div id="robotIcon"></div>
+  </button>
+
+  <div class="assistant-tooltip" id="assistantTooltip">
+    <div class="assistant-bubble">
+      <strong>Need help with AI?</strong><br/>
+      I am your virtual assistant.
+    </div>
+  </div>
+
+  <!-- Chat modal -->
+  <div class="modal-backdrop" id="chatBackdrop"></div>
+  <section class="chat-modal" id="chatModal" role="dialog" aria-modal="true" aria-label="AI Assistant Chat">
+    <div class="chat-header">
+      <div class="chat-title">
+        <div class="chat-mini-robot"><div id="robotHeader"></div></div>
+        <div>
+          AI Assistant
+          <small id="chatSubtitle">Safe prompts • policy help • use case ideas</small>
+        </div>
+      </div>
+
+      <div class="chat-mode">
+        <select id="chatModeSelect" title="Chat backend">
+          <option value="mock">Mock</option>
+          <option value="azure">Azure OpenAI</option>
+          <option value="copilot">Copilot Studio</option>
+        </select>
+      </div>
+
+      <button class="chat-close" id="chatClose" aria-label="Close chat">✕</button>
+    </div>
+
+    <div class="chat-body" id="chatBody">
+      <div class="msg bot">
+        Hi 👋 I’m the AI Lab assistant. Ask me for safe prompts, course recommendations, or how to submit a use case (no customer data).
+      </div>
+      <div class="msg bot">
+        Try: “Give me a safe prompt to summarize an internal policy for branch staff.”
+      </div>
+    </div>
+
+    <!-- Copilot Studio embed container -->
+    <div class="chat-embed-wrap" id="chatEmbedWrap">
+      <!-- TODO: replace src with your Copilot Studio web chat URL/embed -->
+      <iframe class="copilot-embed" id="copilotIframe" title="Copilot Studio" src="about:blank"></iframe>
+    </div>
+
+    <div class="chat-footer" id="chatFooter">
+      <div class="chat-input">
+        <input id="chatInput" placeholder="Type a message…" />
+      </div>
+      <button class="btn primary" id="chatSend">Send</button>
+    </div>
+  </section>
+
+  <script>
+    console.log("AI Lab Hub script loaded", new Date().toISOString());
+
+    // =============================
+    // UPDATE THESE FILE NAMES (same folder as this HTML)
+    // =============================
+    const LOTTIE_BRAIN_JSON = "./d050d2af-b82e-4145-badb-f51f8b8ff625.json";
+    const LOTTIE_ROBOT_JSON = "./5d81411f-a5a2-439f-8ab2-a3a8ec43623a.json";
+
+    // =============================
+    // OPTIONAL: external content feeds (Blob) – OFF by default
+    // =============================
+    const CONTENT_FEEDS = {
+      enabled: false, // TODO: set true when you host JSON in Blob (or via API)
+      baseUrl: "https://<your-storage-account>.blob.core.windows.net/<container>/content",
+      files: {
+        newsletters: "newsletters.json",
+        training: "training.json",
+        news: "news.json",
+        tools: "tools.json"
+      }
+    };
+
+    // =============================
+    // CHAT BACKENDS
+    // =============================
+    const CHAT = {
+      mode: "mock", // mock | azure | copilot
+      // TODO: Azure Functions endpoint you will deploy (CORS allowed for your site)
+      azureApiUrl: "https://<your-function-app>.azurewebsites.net/api/chat",
+      // TODO: Copilot Studio embed URL
+      copilotEmbedUrl: "https://example.com"
+    };
+
+    // -----------------------------
+    // CONFIG (single source of truth)
+    // -----------------------------
+    const CONFIG = {
+      roles: ["Front Desk","Risk & Credit","Operations","Management","IT & Data","HR"],
+      recommendedByRole: {
+        "Front Desk": [
+          { title:"Copilot for Customer Emails", badge:"Beginner • 20 min", desc:"Draft replies with bank tone + safety checklist.", progress:35, metaLeft:"Course", metaRight:"Quiz" },
+          { title:"Fast FAQ Answers (Safe Prompts)", badge:"Quick Win • 10 min", desc:"Prompt templates for product FAQs without sensitive data.", progress:60, metaLeft:"Playbook", metaRight:"Templates" },
+          { title:"Daily Brief: What changed?", badge:"Beginner • 12 min", desc:"Summarize internal updates into 5 bullets for staff.", progress:20, metaLeft:"Guide", metaRight:"Policy" }
+        ],
+        "Risk & Credit": [
+          { title:"Explainability: Talk About AI", badge:"Intermediate • 25 min", desc:"Explain outputs, limits, and confidence properly.", progress:10, metaLeft:"Course", metaRight:"Case" },
+          { title:"Policy Summarization (Safe)", badge:"Beginner • 15 min", desc:"Summarize docs safely + classification rules.", progress:45, metaLeft:"Guide", metaRight:"Rules" },
+          { title:"Hallucination Red Flags", badge:"Quick Win • 8 min", desc:"Spot AI errors and avoid decision traps.", progress:0, metaLeft:"Checklist", metaRight:"Safety" }
+        ],
+        "Operations": [
+          { title:"Meeting Notes → Action Items", badge:"Beginner • 18 min", desc:"Turn notes into tasks + owners (secure tone).", progress:50, metaLeft:"Course", metaRight:"Templates" },
+          { title:"Process SOP Drafting", badge:"Intermediate • 30 min", desc:"Draft SOPs faster from bullet points + review.", progress:15, metaLeft:"Guide", metaRight:"Review" },
+          { title:"Automation Ideas Board", badge:"Quick Win • 6 min", desc:"Submit repetitive tasks for evaluation.", progress:0, metaLeft:"Form", metaRight:"ROI" }
+        ],
+        "Management": [
+          { title:"Executive Briefs in 5 Bullets", badge:"Beginner • 12 min", desc:"Turn long content into concise briefs.", progress:70, metaLeft:"Playbook", metaRight:"Examples" },
+          { title:"AI Governance in Banking", badge:"Intermediate • 22 min", desc:"What to ask, approve, and monitor.", progress:25, metaLeft:"Course", metaRight:"Governance" },
+          { title:"Measure Adoption & Impact", badge:"Quick Win • 10 min", desc:"KPIs before ROI (auditable).", progress:0, metaLeft:"Dashboard", metaRight:"KPIs" }
+        ],
+        "IT & Data": [
+          { title:"Prompt Patterns for Analysts", badge:"Intermediate • 25 min", desc:"Summarize, transform, validate — reusable patterns.", progress:40, metaLeft:"Course", metaRight:"Library" },
+          { title:"RAG Basics (Internal Docs)", badge:"Advanced • 35 min", desc:"How retrieval works, what to monitor, risks.", progress:5, metaLeft:"Course", metaRight:"Architecture" },
+          { title:"Tool Approval Checklist", badge:"Quick Win • 8 min", desc:"Security, privacy, and ops checklist.", progress:0, metaLeft:"Checklist", metaRight:"Controls" }
+        ],
+        "HR": [
+          { title:"Job Descriptions & Interview Packs", badge:"Beginner • 15 min", desc:"Consistent job ads + structured questions.", progress:30, metaLeft:"Course", metaRight:"Templates" },
+          { title:"Training Plans per Role", badge:"Beginner • 12 min", desc:"Simple learning paths for units.", progress:10, metaLeft:"Guide", metaRight:"Paths" },
+          { title:"Internal Comms (AI Updates)", badge:"Quick Win • 8 min", desc:"Turn AI updates into short comms.", progress:0, metaLeft:"Playbook", metaRight:"Comms" }
+        ],
+      },
+
+      tools: [
+        {
+          title:"Microsoft 365 Copilot",
+          badge:"Approved • Staff",
+          desc:"Email, Word, PowerPoint, Teams summaries + safe guidance.",
+          metaLeft:"Tool",
+          metaRight:"Prompts",
+          url:"https://iliria98.com/",
+          logo:"./logos/copilot.png"
+        },
+        {
+          title:"Internal Document Assistant",
+          badge:"Pilot • Limited",
+          desc:"Search internal policies (RAG) with controlled access.",
+          metaLeft:"Tool",
+          metaRight:"Access",
+          url:"https://iliria98.com/",
+          logo:"./logos/doc-assistant.png"
+        },
+        {
+          title:"Prompt Library",
+          badge:"Available",
+          desc:"Bank-ready prompts for daily tasks (non-sensitive).",
+          metaLeft:"Resource",
+          metaRight:"Templates",
+          url:"https://iliria98.com/",
+          logo:"./logos/prompt-library.png"
+        }
+      ],
+
+      learning: [
+        { title:"AI Basics for Banking", badge:"Beginner • 45 min", desc:"Concepts, limitations, safe usage patterns.", progress:55, metaLeft:"Course", metaRight:"Quiz" },
+        { title:"Prompting for Daily Work", badge:"Beginner • 35 min", desc:"Reusable prompt structures + review checklist.", progress:20, metaLeft:"Course", metaRight:"Lab" },
+        { title:"Responsible AI & Compliance", badge:"Intermediate • 40 min", desc:"Data handling, governance, escalation.", progress:5, metaLeft:"Course", metaRight:"Exam" }
+      ],
+
+      // NEW: Training Library items
+      training: [
+        {
+          title: "Copilot in Outlook: Safe customer email drafting",
+          type: "video",
+          level: "Beginner",
+          duration: "7 min",
+          roles: ["Front Desk","Operations"],
+          source: "YouTube",
+          url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" // TODO replace
+        },
+        {
+          title: "AI data handling: what you can/can’t paste",
+          type: "pdf",
+          level: "Beginner",
+          duration: "3 pages",
+          roles: ["All"],
+          source: "SharePoint",
+          url: "https://iliria98.com/" // TODO replace with SharePoint doc link
+        },
+        {
+          title: "RAG basics for internal documents",
+          type: "ppt",
+          level: "Advanced",
+          duration: "12 slides",
+          roles: ["IT & Data","Risk & Credit"],
+          source: "SharePoint",
+          url: "https://iliria98.com/" // TODO replace
+        }
+      ],
+
+      // NEW: Newsletter editions
+      newsletters: [
+        {
+          edition: "Edition #01",
+          date: "2026-02-05",
+          title: "AI Lab Newsletter — Kickoff & What’s Next",
+          summary: "What we launched, where to find tools, and how to submit use cases safely.",
+          coverImage: "./newsletters/edition-01.jpg", // optional
+          pdfUrl: "https://iliria98.com/", // TODO replace with PDF link
+          spUrl: "https://iliria98.com/",  // TODO replace with SharePoint page link
+          tags: ["Internal","Adoption"]
+        },
+        {
+          edition: "Edition #02",
+          date: "2026-02-12",
+          title: "Prompt templates for branch staff + office hours",
+          summary: "New prompt pack released. Office hours topics and top Q&A from branches.",
+          coverImage: "./newsletters/edition-02.jpg",
+          pdfUrl: "https://iliria98.com/",
+          spUrl: "https://iliria98.com/",
+          tags: ["Front Desk","Templates"]
+        },
+        {
+          edition: "Edition #03",
+          date: "2026-02-19",
+          title: "Responsible AI: controls, incidents, and safe workflows",
+          summary: "A short bank-ready guide to avoid risks while still moving fast.",
+          coverImage: "./newsletters/edition-03.jpg",
+          pdfUrl: "https://iliria98.com/",
+          spUrl: "https://iliria98.com/",
+          tags: ["Governance","Compliance"]
+        }
+      ],
+
+      news: [
+        {
+          title: "Google's upgrade breaks reasoning barriers",
+          sub: "PLUS: How to generate a TV commercial with AI",
+          image: "./news/google-reasoning.jpg",
+          author: "Zach Mink",
+          url: "https://www.therundown.ai/p/googles-upgrade-breaks-reasoning-barriers"
+        },
+        {
+          title:"Internal: New Prompt Templates Released",
+          sub:"Front desk templates updated + safe checklist + role examples",
+          image:"",
+          author:"AI Lab",
+          url:"https://iliria98.com/"
+        },
+        {
+          title:"Training: Office Hours Topics",
+          sub:"Safe doc summarization • best prompts • Q&A",
+          image:"",
+          author:"AI Lab",
+          url:"https://iliria98.com/"
+        }
+      ],
+
+      initialIdeas: [
+        { title:"Auto-draft common customer replies", area:"Front Desk", value:"Save time", status:"In review" },
+        { title:"Summarize policy updates for branches", area:"Operations", value:"Reduce errors", status:"Planned" },
+        { title:"Create meeting minutes with action owners", area:"Management", value:"Save time", status:"In review" }
+      ]
+    };
+
+    // -----------------------------
+    // Helpers
+    // -----------------------------
+    function escapeHTML(str){
+      return String(str ?? "")
+        .replaceAll("&","&amp;").replaceAll("<","&lt;")
+        .replaceAll(">","&gt;").replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    function safeA(href, label){
+      return `<a class="link-chip" href="${escapeHTML(href)}" target="_blank" rel="noopener noreferrer">${escapeHTML(label)} ↗</a>`;
+    }
+
+    function cardHTML(item){
+      const pct = item.progress ?? null;
+      const progressHTML = (pct === null || pct === undefined) ? "" : `
+        <div class="progress" aria-label="progress">
+          <div style="width:${Math.max(0,Math.min(100,pct))}%"></div>
+        </div>
+      `;
+
+      const logoHTML = item.logo ? `
+        <div class="tool-head">
+          <div class="tool-logo" aria-hidden="true">
+            <img src="${escapeHTML(item.logo)}" alt="">
+          </div>
+          <div style="flex:1; min-width:0;">
+            <p class="title">${escapeHTML(item.title)}</p>
+            <p class="desc">${escapeHTML(item.desc || "")}</p>
+          </div>
+          <div class="badge">${escapeHTML(item.badge || "")}</div>
+        </div>
+      ` : `
+        <div style="display:flex; justify-content:space-between; gap:10px; align-items:flex-start; margin-bottom:8px;">
+          <div>
+            <p class="title">${escapeHTML(item.title)}</p>
+            <p class="desc">${escapeHTML(item.desc || "")}</p>
+          </div>
+          <div class="badge">${escapeHTML(item.badge || "")}</div>
+        </div>
+      `;
+
+      const actionsHTML = item.url ? `
+        <div class="tool-actions">
+          ${safeA(item.url, "Visit")}
+        </div>
+      ` : "";
+
+      return `
+        <article class="card">
+          <span class="corner-ic" aria-hidden="true"></span>
+          ${logoHTML}
+          ${progressHTML}
+          <div class="meta">
+            <span>${escapeHTML(item.metaLeft || "")}</span>
+            <span>${escapeHTML(item.metaRight || "")}</span>
+          </div>
+          ${actionsHTML}
+        </article>
+      `;
+    }
+
+    function youtubeThumb(url){
+      try{
+        const u = new URL(url);
+        if(u.hostname.includes("youtube.com")){
+          const id = u.searchParams.get("v");
+          if(id) return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+        }
+        if(u.hostname === "youtu.be"){
+          const id = u.pathname.replace("/","");
+          if(id) return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+        }
+      } catch(e){}
+      return "";
+    }
+
+    // -----------------------------
+    // News / Newsletter / Training renderers
+    // -----------------------------
+    function rundownNewsHTML(n){
+      const media = n.image ? `<img src="${escapeHTML(n.image)}" alt="">` : `<div style="font-size:12px;color:#5b6473;">No image</div>`;
+      return `
+        <div class="news-card">
+          <div class="news-media">${media}</div>
+          <div>
+            <div class="news-headline">${escapeHTML(n.title)}</div>
+            ${n.sub ? `<div class="news-sub">${escapeHTML(n.sub)}</div>` : ""}
+          </div>
+          <div class="news-author">
+            <img src="https://i.pravatar.cc/40?img=1" alt="">
+            <img src="https://i.pravatar.cc/40?img=2" alt="">
+            <img src="https://i.pravatar.cc/40?img=3" alt="">
+            <span>${escapeHTML(n.author || "")}</span>
+          </div>
+          <a class="news-link" href="${escapeHTML(n.url)}" target="_blank" rel="noopener noreferrer">Read full story ↗</a>
+        </div>
+      `;
+    }
+
+    function newsletterHTML(nl){
+      const cover = nl.coverImage
+        ? `<img src="${escapeHTML(nl.coverImage)}" alt="">`
+        : `<div style="padding:10px; color:var(--muted); font-size:12px; text-align:center;">Newsletter cover</div>`;
+
+      const tags = (nl.tags || []).slice(0,3).map(t => `<span class="nl-chip">${escapeHTML(t)}</span>`).join("");
+
+      const actions = `
+        <div class="tool-actions">
+          ${nl.pdfUrl ? safeA(nl.pdfUrl, "Open PDF") : ""}
+          ${nl.spUrl ? safeA(nl.spUrl, "Open SharePoint") : ""}
+        </div>
+      `;
+
+      return `
+        <article class="nl-card" style="grid-column: span 4;">
+          <div class="nl-cover">${cover}</div>
+          <div class="nl-meta">
+            <span class="nl-chip">${escapeHTML(nl.edition || "Edition")}</span>
+            <span class="nl-chip">${escapeHTML(nl.date || "")}</span>
+            ${tags}
+          </div>
+          <p class="nl-title">${escapeHTML(nl.title)}</p>
+          <p class="nl-summary">${escapeHTML(nl.summary)}</p>
+          ${actions}
+        </article>
+      `;
+    }
+
+    function trainingHTML(t){
+      const thumb = (t.type === "video") ? youtubeThumb(t.url) : "";
+      const logo = thumb
+        ? `<img src="${escapeHTML(thumb)}" alt="">`
+        : `<div style="font-size:12px;color:#5b6473;">${escapeHTML((t.type || "link").toUpperCase())}</div>`;
+
+      const roles = (t.roles || []).includes("All") ? "All roles" : (t.roles || []).join(", ");
+      const badge = `${t.level || "Level"} • ${t.type || "Type"}`;
+
+      return `
+        <article class="card" style="grid-column: span 4;">
+          <span class="corner-ic" aria-hidden="true"></span>
+          <div class="tool-head">
+            <div class="tool-logo" aria-hidden="true">${logo}</div>
+            <div style="flex:1; min-width:0;">
+              <p class="title">${escapeHTML(t.title)}</p>
+              <p class="desc">${escapeHTML(t.source || "Source")} • ${escapeHTML(t.duration || "")} • ${escapeHTML(roles)}</p>
+            </div>
+            <div class="badge">${escapeHTML(badge)}</div>
+          </div>
+          <div class="meta">
+            <span>${escapeHTML(t.source || "")}</span>
+            <span>${escapeHTML(t.duration || "")}</span>
+          </div>
+          <div class="tool-actions">
+            ${safeA(t.url, "Open")}
+          </div>
+        </article>
+      `;
+    }
+
+    // -----------------------------
+    // DOM handles
+    // -----------------------------
+    const tabsEl = document.getElementById("roleTabs");
+    const recEl  = document.getElementById("recommendedGrid");
+    const toolsEl= document.getElementById("toolsGrid");
+    const learnEl= document.getElementById("learningGrid");
+    const newsEl = document.getElementById("newsGrid");
+    const nlEl   = document.getElementById("newsletterGrid");
+    const trainingEl = document.getElementById("trainingGrid");
+
+    // Training filters
+    const trainRoleEl = document.getElementById("trainRole");
+    const trainTypeEl = document.getElementById("trainType");
+    const trainLevelEl= document.getElementById("trainLevel");
+    const trainResetBtn = document.getElementById("trainReset");
+
+    // -----------------------------
+    // Role tabs
+    // -----------------------------
+    function setActiveRole(role){
+      document.querySelectorAll(".tab").forEach(t => {
+        t.classList.toggle("active", t.dataset.role === role);
+      });
+      const items = CONFIG.recommendedByRole[role] || [];
+      recEl.innerHTML = items.map(cardHTML).join("");
+
+      // simple personalization persistence
+      try{ localStorage.setItem("tb_ai_role", role); } catch(e){}
+    }
+
+    // -----------------------------
+    // Use case board
+    // -----------------------------
+    const boardEl = document.getElementById("ideasBoard");
+    const ideas = [...CONFIG.initialIdeas];
+
+    function renderIdeas(){
+      boardEl.innerHTML = ideas.slice(0,6).map(i => `
+        <div class="idea">
+          <div class="row">
+            <strong>${escapeHTML(i.title)}</strong>
+            <span class="tag">${escapeHTML(i.status)}</span>
+          </div>
+          <div class="meta">
+            <span>${escapeHTML(i.area)} • ${escapeHTML(i.value)}</span>
+            <span class="tag">Idea</span>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function submitUseCase(){
+      const title = document.getElementById("ucTitle").value.trim();
+      const area  = document.getElementById("ucArea").value;
+      const value = document.getElementById("ucValue").value;
+      const desc  = document.getElementById("ucDesc").value.trim();
+
+      if(!title || !desc){
+        alert("Please fill in title and description (mock).");
+        return;
+      }
+
+      ideas.unshift({ title, area, value, status:"New" });
+      renderIdeas();
+
+      document.getElementById("ucTitle").value = "";
+      document.getElementById("ucDesc").value = "";
+      alert("Submitted (mock). Next step: save to SharePoint list / API.");
+    }
+
+    function prefillUseCase(){
+      document.getElementById("ucTitle").value = "Branch daily summary: policy + updates";
+      document.getElementById("ucArea").value  = "Operations";
+      document.getElementById("ucValue").value = "Reduce errors";
+      document.getElementById("ucDesc").value  =
+        "Every day staff receive multiple updates. Create a short 5-bullet daily summary for branches, with links to the source documents. No customer data involved.";
+    }
+
+    window.submitUseCase = submitUseCase;
+    window.prefillUseCase = prefillUseCase;
+
+    // -----------------------------
+    // Training filters logic
+    // -----------------------------
+    function uniqueSorted(arr){ return [...new Set(arr)].filter(Boolean).sort(); }
+
+    function initTrainingFilters(){
+      const roles = uniqueSorted(CONFIG.training.flatMap(t => (t.roles || [])));
+      const types = uniqueSorted(CONFIG.training.map(t => t.type));
+      const levels= uniqueSorted(CONFIG.training.map(t => t.level));
+
+      // roles
+      const roleOptions = ["all", ...roles.filter(r => r !== "All")];
+      trainRoleEl.innerHTML = roleOptions.map(r => `<option value="${escapeHTML(r)}">${r === "all" ? "Role: All" : `Role: ${escapeHTML(r)}`}</option>`).join("");
+
+      // types
+      const typeOptions = ["all", ...types];
+      trainTypeEl.innerHTML = typeOptions.map(t => `<option value="${escapeHTML(t)}">${t === "all" ? "Type: All" : `Type: ${escapeHTML(t)}`}</option>`).join("");
+
+      // levels
+      const levelOptions = ["all", ...levels];
+      trainLevelEl.innerHTML = levelOptions.map(l => `<option value="${escapeHTML(l)}">${l === "all" ? "Level: All" : `Level: ${escapeHTML(l)}`}</option>`).join("");
+
+      trainRoleEl.addEventListener("change", renderTraining);
+      trainTypeEl.addEventListener("change", renderTraining);
+      trainLevelEl.addEventListener("change", renderTraining);
+      trainResetBtn.addEventListener("click", () => {
+        trainRoleEl.value = "all";
+        trainTypeEl.value = "all";
+        trainLevelEl.value = "all";
+        renderTraining();
+      });
+    }
+
+    function passesRoleFilter(item, role){
+      if(role === "all") return true;
+      const roles = item.roles || [];
+      if(roles.includes("All")) return true;
+      return roles.includes(role);
+    }
+
+    function renderTraining(){
+      const role = trainRoleEl.value;
+      const type = trainTypeEl.value;
+      const level= trainLevelEl.value;
+
+      const items = CONFIG.training.filter(t =>
+        passesRoleFilter(t, role) &&
+        (type === "all" || t.type === type) &&
+        (level=== "all" || t.level === level)
+      );
+
+      trainingEl.innerHTML = items.map(trainingHTML).join("") || `
+        <div class="block" style="grid-column: span 12;">
+          <h3>No matching training items</h3>
+          <p class="desc">Try resetting filters.</p>
+        </div>
+      `;
+    }
+
+    // -----------------------------
+    // Lottie loader
+    // -----------------------------
+    async function loadLottie(containerId, jsonPath, opts = {}){
+      const el = document.getElementById(containerId);
+      if(!el) return;
+      const res = await fetch(jsonPath);
+      if(!res.ok) throw new Error(`Failed to load ${jsonPath} (${res.status})`);
+      const animData = await res.json();
+
+      return lottie.loadAnimation({
+        container: el,
+        renderer: "svg",
+        loop: opts.loop ?? true,
+        autoplay: opts.autoplay ?? true,
+        animationData: animData,
+        rendererSettings: {
+          preserveAspectRatio: "xMidYMid meet",
+          progressiveLoad: true
+        }
+      });
+    }
+
+    // -----------------------------
+    // Chat modal behavior + modes
+    // -----------------------------
+    const fab = document.getElementById("assistantFab");
+    const modal = document.getElementById("chatModal");
+    const backdrop = document.getElementById("chatBackdrop");
+    const closeBtn = document.getElementById("chatClose");
+    const sendBtn = document.getElementById("chatSend");
+    const input = document.getElementById("chatInput");
+    const body = document.getElementById("chatBody");
+    const subtitle = document.getElementById("chatSubtitle");
+
+    const modeSelect = document.getElementById("chatModeSelect");
+    const embedWrap = document.getElementById("chatEmbedWrap");
+    const copilotIframe = document.getElementById("copilotIframe");
+    const chatFooter = document.getElementById("chatFooter");
+
+    function openChat(){
+      modal.classList.add("open");
+      backdrop.classList.add("open");
+      setTimeout(() => input?.focus(), 50);
+    }
+    function closeChat(){
+      modal.classList.remove("open");
+      backdrop.classList.remove("open");
+    }
+
+    fab.addEventListener("click", openChat);
+    closeBtn.addEventListener("click", closeChat);
+    backdrop.addEventListener("click", closeChat);
+    document.addEventListener("keydown", (e) => {
+      if(e.key === "Escape") closeChat();
+    });
+
+    function addMsg(text, who){
+      const div = document.createElement("div");
+      div.className = `msg ${who}`;
+      div.textContent = text;
+      body.appendChild(div);
+      body.scrollTop = body.scrollHeight;
+    }
+
+    function mockBotReply(userText){
+      const t = userText.toLowerCase();
+      if(t.includes("policy") || t.includes("procedure")){
+        return "Safe approach: paste only non-sensitive excerpts, ask for a 5-bullet summary, and validate against the source. Want a prompt template?";
+      }
+      if(t.includes("use case") || t.includes("idea")){
+        return "State: (1) problem, (2) users, (3) expected value, (4) data needed (no PII), (5) risks. Submit it in the “Suggest a Use Case” section.";
+      }
+      if(t.includes("allowed") || t.includes("pii") || t.includes("data")){
+        return "Rule: never paste customer PII, account numbers, IDs, credentials, or confidential info. Use anonymized examples only.";
+      }
+      return "I can help with safe prompts, training recommendations, or turning a task into an AI use case. What role are you in (Front Desk / Risk / Ops / IT)?";
+    }
+
+    async function azureBotReply(userText){
+      // Minimal placeholder: expects JSON { reply: "..." }
+      // You will implement this in Azure Functions.
+      const payload = {
+        message: userText,
+        context: {
+          app: "Tirana Bank AI Lab Hub",
+          policy: "Do not include customer data. Provide safe, bank-appropriate guidance."
+        }
+      };
+
+      const res = await fetch(CHAT.azureApiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if(!res.ok){
+        const text = await res.text().catch(() => "");
+        throw new Error(`Azure API error: ${res.status} ${text}`);
+      }
+
+      const data = await res.json();
+      return data.reply || "No reply returned from API.";
+    }
+
+    function setChatMode(mode){
+      CHAT.mode = mode;
+
+      if(mode === "copilot"){
+        // hide message list/input, show embed
+        body.classList.add("hide");
+        embedWrap.classList.add("open");
+        chatFooter.style.display = "none";
+
+        copilotIframe.style.display = "block";
+        copilotIframe.src = CHAT.copilotEmbedUrl; // TODO replace
+        subtitle.textContent = "Copilot Studio • embedded";
+
+        return;
+      }
+
+      // show normal chat UI
+      body.classList.remove("hide");
+      embedWrap.classList.remove("open");
+      chatFooter.style.display = "flex";
+
+      if(mode === "azure"){
+        subtitle.textContent = "Azure OpenAI • via API (Functions)";
+      } else {
+        subtitle.textContent = "Mock • safe prompts • policy help";
+      }
+    }
+
+    modeSelect.addEventListener("change", () => setChatMode(modeSelect.value));
+
+    async function send(){
+      const v = (input.value || "").trim();
+      if(!v) return;
+
+      addMsg(v, "user");
+      input.value = "";
+
+      try{
+        if(CHAT.mode === "azure"){
+          addMsg("Thinking…", "bot");
+          const thinking = body.lastElementChild;
+          const reply = await azureBotReply(v);
+          thinking.textContent = reply;
+        } else {
+          setTimeout(() => addMsg(mockBotReply(v), "bot"), 200);
+        }
+      } catch(err){
+        console.error(err);
+        addMsg("Sorry — I couldn’t reach the chat backend. Check the Azure API URL / CORS. (This is expected until you wire Azure Functions.)", "bot");
+      }
+    }
+
+    sendBtn.addEventListener("click", send);
+    input.addEventListener("keydown", (e) => {
+      if(e.key === "Enter") send();
+    });
+
+    // -----------------------------
+    // Optional: load config from Blob feeds later
+    // -----------------------------
+    async function maybeLoadFeeds(){
+      if(!CONTENT_FEEDS.enabled) return;
+
+      async function loadJson(file){
+        const url = `${CONTENT_FEEDS.baseUrl}/${file}`;
+        const res = await fetch(url, { cache: "no-store" });
+        if(!res.ok) throw new Error(`Failed to load ${url} (${res.status})`);
+        return await res.json();
+      }
+
+      try{
+        // Example: selectively override arrays if files exist
+        const [newsletters, training, news, tools] = await Promise.all([
+          loadJson(CONTENT_FEEDS.files.newsletters),
+          loadJson(CONTENT_FEEDS.files.training),
+          loadJson(CONTENT_FEEDS.files.news),
+          loadJson(CONTENT_FEEDS.files.tools),
+        ]);
+
+        if(Array.isArray(newsletters)) CONFIG.newsletters = newsletters;
+        if(Array.isArray(training)) CONFIG.training = training;
+        if(Array.isArray(news)) CONFIG.news = news;
+        if(Array.isArray(tools)) CONFIG.tools = tools;
+
+      } catch(e){
+        console.warn("Feed load skipped/failed:", e);
+      }
+    }
+
+    // -----------------------------
+    // Init
+    // -----------------------------
+    async function init(){
+      await maybeLoadFeeds();
+
+      // Tabs
+      tabsEl.innerHTML = CONFIG.roles.map((r, idx) => `
+        <div class="tab ${idx===0?'active':''}" data-role="${escapeHTML(r)}">${escapeHTML(r)}</div>
+      `).join("");
+
+      tabsEl.addEventListener("click", (e) => {
+        const t = e.target.closest(".tab");
+        if(!t) return;
+        setActiveRole(t.dataset.role);
+      });
+
+      // restore role selection
+      try{
+        const saved = localStorage.getItem("tb_ai_role");
+        if(saved && CONFIG.roles.includes(saved)){
+          // mark correct tab active
+          document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.role === saved));
+          setActiveRole(saved);
+        } else {
+          setActiveRole(CONFIG.roles[0]);
+        }
+      } catch(e){
+        setActiveRole(CONFIG.roles[0]);
+      }
+
+      // Grids
+      toolsEl.innerHTML = CONFIG.tools.map(cardHTML).join("");
+      learnEl.innerHTML = CONFIG.learning.map(cardHTML).join("");
+      newsEl.innerHTML  = CONFIG.news.map(rundownNewsHTML).join("");
+
+      nlEl.innerHTML = CONFIG.newsletters
+        .slice()
+        .sort((a,b) => String(b.date).localeCompare(String(a.date)))
+        .map(newsletterHTML).join("");
+
+      initTrainingFilters();
+      renderTraining();
+
+      renderIdeas();
+
+      // Chat mode default
+      setChatMode(modeSelect.value);
+    }
+
+    init();
+
+    // Lottie animations
+    (async () => {
+      try{
+        const brain = await loadLottie("brainLottie", LOTTIE_BRAIN_JSON, { loop: true, autoplay: true });
+        brain.setSpeed(0.85);
+
+        const robotIcon = await loadLottie("robotIcon", LOTTIE_ROBOT_JSON, { loop: true, autoplay: true });
+        robotIcon.setSpeed(1.0);
+
+        const robotHeader = await loadLottie("robotHeader", LOTTIE_ROBOT_JSON, { loop: true, autoplay: true });
+        robotHeader.setSpeed(1.0);
+      } catch(err){
+        console.error(err);
+        alert("Could not load Lottie JSON. Put JSON files next to this HTML and run via a local server (not file://).");
+      }
+    })();
+
+    (function () {
+      const tip = document.getElementById("assistantTooltip");
+      if (!tip) return;
+      setTimeout(() => tip.classList.add("show"), 600);
+    })();
+  </script>
+</body>
+</html>
