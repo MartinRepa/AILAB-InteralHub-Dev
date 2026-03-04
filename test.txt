@@ -1,0 +1,30 @@
+import requests
+
+TOKEN = "YOUR_DIRECTLINE_TOKEN"
+
+# create conversation
+conv = requests.post(
+    "https://directline.botframework.com/v3/directline/conversations",
+    headers={"Authorization": f"Bearer {TOKEN}"}
+).json()
+
+cid = conv["conversationId"]
+
+# send message (prompt)
+requests.post(
+    f"https://directline.botframework.com/v3/directline/conversations/{cid}/activities",
+    headers={"Authorization": f"Bearer {TOKEN}"},
+    json={
+        "type": "message",
+        "from": {"id": "user"},
+        "text": "Hello agent"
+    }
+)
+
+# read response
+resp = requests.get(
+    f"https://directline.botframework.com/v3/directline/conversations/{cid}/activities",
+    headers={"Authorization": f"Bearer {TOKEN}"}
+).json()
+
+print(resp["activities"][-1]["text"])
