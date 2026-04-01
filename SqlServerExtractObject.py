@@ -199,3 +199,121 @@ cur.close()
 conn.close()
 
 print("Export completed.")
+
+def fetch_table_definition(cursor, schema_name: str, table_name: str) -> str:
+    sql = """
+    SELECT
+        c.column_id,
+        c.name AS column_name,
+        typ.name AS data_type,
+        c.max_length,
+        c.precision,
+        c.scale,
+        c.is_nullable,
+        c.is_identity,
+        ic.seed_value,
+        ic.increment_value,
+        dc.definition AS default_definition
+    FROM sys.columns c
+    INNER JOIN sys.tables t
+        ON c.object_id = t.object_id
+    INNER JOIN sys.schemas s
+        ON t.schema_id = s.schema_id
+    INNER JOIN sys.types typ
+        ON c.user_type_id = typ.user_type_id
+    LEFT JOIN sys.identity_columns ic
+        ON c.object_id = ic.object_id
+       AND c.column_id = ic.column_id
+    LEFT JOIN sys.default_constraints dc
+        ON c.default_object_id = dc.object_id
+    WHERE s.name = ?
+      AND t.name = ?
+    ORDER BY c.column_id;
+    """
+    cursor.execute(sql, schema_name, table_name)
+    rows = cursor.fetchall()
+
+    if not rows:
+        return None
+
+    column_lines = []
+
+    for row in rows:
+        (
+            column_id,
+            column_name,
+            data_type,
+            max_length,
+            precision,
+            scale,
+            is_nullable,
+            is_identity,
+            seed_value,
+            increment_value,
+            default_definition
+        ) = row
+
+        data_type_upper = str(data_type).upper()
+
+        if data_type_upper in ("VARCHAR", "CHAR", "VARBINARY", "BINARY"):
+            if max_length == -1:
+                type_def = f"{data_type_upper}(MAX)"
+            else:
+                type_def = f"{data_type_upper}({max_length})"
+
+        elif data_type_upper in ("NVARCHAR", "NCHAR"):
+            if max_length == -1:
+                type_def = f"{data_type_upper}(MAX)"
+            else:
+                type_def = f"{data_type_upper}({max_length // 2})"
+
+        elif data_type_upper in ("DECIMAL", "NUMERIC"):
+            type_def = f"{data_type_upper}({precision},{scale})"
+
+        elif data_type_upper in ("DATETIME2", "DATETIMEOFFSET", "TIME"):
+            type_def = f"{data_type_upper}({scale})"
+
+        else:
+            type_def = data_type_upper
+
+        col_def = f"[{column_name}] {type_def}"
+
+        if is_identity:
+            seed = int(seed_value) if seed_value is not None else 1
+            inc = int(increment_value) if increment_value is not None else 1
+            col_def += f" IDENTITY({seed},{inc})"
+
+        if default_definition:
+            col_def += f" DEFAULT {default_definition}"
+
+        col_def += " NULL" if is_nullable else " NOT NULL"
+        column_lines.append(col_def)
+
+    ddl = (
+        f"CREATE TABLE [{schema_name}].[{table_name}] (\n    " +
+        ",\n    ".join(column_lines) +
+        "\n);"
+    )
+
+    return ddl
+
+
+ddl = fetch_definition(cur, object_id)
+        if not ddl:
+            print(f"Skipping {schema_name}.{object_name} - no definition found.")
+            continue
+
+        ddl = ddl.strip()
+        ddl = ensure_create_uses_schema(ddl, object_type, schema_name, object_name)
+
+if object_type == "TABLE":
+            ddl = fetch_table_definition(cur, schema_name, object_name)
+        else:
+            ddl = fetch_definition(cur, object_id)
+            if ddl:
+                ddl = ddl.strip()
+                ddl = ensure_create_uses_schema(ddl, object_type, schema_name, object_name)
+
+        if not ddl:
+            print(f"Skipping {schema_name}.{object_name} - no definition found.")
+            continue
