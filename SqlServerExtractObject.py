@@ -317,3 +317,6 @@ if object_type == "TABLE":
         if not ddl:
             print(f"Skipping {schema_name}.{object_name} - no definition found.")
             continue
+
+
+pyodbc.ProgrammingError: ('ODBC SQL type -150 is not yet supported.  column-index=8  type=-150', 'HY106')
