@@ -320,3 +320,102 @@ if object_type == "TABLE":
 
 
 pyodbc.ProgrammingError: ('ODBC SQL type -150 is not yet supported.  column-index=8  type=-150', 'HY106')
+
+
+
+def fetch_table_definition(cursor, schema_name: str, table_name: str) -> str:
+    sql = """
+    SELECT
+        CAST(c.column_id AS INT) AS column_id,
+        CAST(c.name AS NVARCHAR(128)) AS column_name,
+        CAST(typ.name AS NVARCHAR(128)) AS data_type,
+        CAST(c.max_length AS INT) AS max_length,
+        CAST(c.precision AS INT) AS [precision],
+        CAST(c.scale AS INT) AS scale,
+        CAST(c.is_nullable AS BIT) AS is_nullable,
+        CAST(c.is_identity AS BIT) AS is_identity,
+        CAST(ic.seed_value AS BIGINT) AS seed_value,
+        CAST(ic.increment_value AS BIGINT) AS increment_value,
+        CAST(dc.definition AS NVARCHAR(MAX)) AS default_definition
+    FROM sys.columns c
+    INNER JOIN sys.tables t
+        ON c.object_id = t.object_id
+    INNER JOIN sys.schemas s
+        ON t.schema_id = s.schema_id
+    INNER JOIN sys.types typ
+        ON c.user_type_id = typ.user_type_id
+    LEFT JOIN sys.identity_columns ic
+        ON c.object_id = ic.object_id
+       AND c.column_id = ic.column_id
+    LEFT JOIN sys.default_constraints dc
+        ON c.default_object_id = dc.object_id
+    WHERE s.name = ?
+      AND t.name = ?
+    ORDER BY c.column_id;
+    """
+    cursor.execute(sql, schema_name, table_name)
+    rows = cursor.fetchall()
+
+    if not rows:
+        return None
+
+    column_lines = []
+
+    for row in rows:
+        (
+            column_id,
+            column_name,
+            data_type,
+            max_length,
+            precision,
+            scale,
+            is_nullable,
+            is_identity,
+            seed_value,
+            increment_value,
+            default_definition
+        ) = row
+
+        data_type_upper = str(data_type).upper()
+
+        if data_type_upper in ("VARCHAR", "CHAR", "VARBINARY", "BINARY"):
+            if max_length == -1:
+                type_def = f"{data_type_upper}(MAX)"
+            else:
+                type_def = f"{data_type_upper}({max_length})"
+
+        elif data_type_upper in ("NVARCHAR", "NCHAR"):
+            if max_length == -1:
+                type_def = f"{data_type_upper}(MAX)"
+            else:
+                type_def = f"{data_type_upper}({max_length // 2})"
+
+        elif data_type_upper in ("DECIMAL", "NUMERIC"):
+            type_def = f"{data_type_upper}({precision},{scale})"
+
+        elif data_type_upper in ("DATETIME2", "DATETIMEOFFSET", "TIME"):
+            type_def = f"{data_type_upper}({scale})"
+
+        else:
+            type_def = data_type_upper
+
+        col_def = f"[{column_name}] {type_def}"
+
+        if is_identity:
+            seed = int(seed_value) if seed_value is not None else 1
+            inc = int(increment_value) if increment_value is not None else 1
+            col_def += f" IDENTITY({seed},{inc})"
+
+        if default_definition:
+            col_def += f" DEFAULT {default_definition}"
+
+        col_def += " NULL" if is_nullable else " NOT NULL"
+        column_lines.append(col_def)
+
+    ddl = (
+        f"CREATE TABLE [{schema_name}].[{table_name}] (\n    " +
+        ",\n    ".join(column_lines) +
+        "\n);"
+    )
+
+    return ddl
