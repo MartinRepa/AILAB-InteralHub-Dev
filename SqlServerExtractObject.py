@@ -419,3 +419,246 @@ def fetch_table_definition(cursor, schema_name: str, table_name: str) -> str:
     )
 
     return ddl
+
+
+
+def fetch_table_definition(cursor, schema_name: str, table_name: str) -> str:
+    # -------------------------
+    # columns
+    # -------------------------
+    sql_columns = """
+    SELECT
+        CAST(c.column_id AS INT) AS column_id,
+        CAST(c.name AS NVARCHAR(128)) AS column_name,
+        CAST(typ.name AS NVARCHAR(128)) AS data_type,
+        CAST(c.max_length AS INT) AS max_length,
+        CAST(c.precision AS INT) AS [precision],
+        CAST(c.scale AS INT) AS scale,
+        CAST(c.is_nullable AS BIT) AS is_nullable,
+        CAST(c.is_identity AS BIT) AS is_identity,
+        CAST(ic.seed_value AS BIGINT) AS seed_value,
+        CAST(ic.increment_value AS BIGINT) AS increment_value,
+        CAST(dc.definition AS NVARCHAR(MAX)) AS default_definition
+    FROM sys.columns c
+    INNER JOIN sys.tables t
+        ON c.object_id = t.object_id
+    INNER JOIN sys.schemas s
+        ON t.schema_id = s.schema_id
+    INNER JOIN sys.types typ
+        ON c.user_type_id = typ.user_type_id
+    LEFT JOIN sys.identity_columns ic
+        ON c.object_id = ic.object_id
+       AND c.column_id = ic.column_id
+    LEFT JOIN sys.default_constraints dc
+        ON c.default_object_id = dc.object_id
+    WHERE s.name = ?
+      AND t.name = ?
+    ORDER BY c.column_id;
+    """
+    cursor.execute(sql_columns, schema_name, table_name)
+    rows = cursor.fetchall()
+
+    if not rows:
+        return None
+
+    column_lines = []
+
+    for row in rows:
+        (
+            column_id,
+            column_name,
+            data_type,
+            max_length,
+            precision,
+            scale,
+            is_nullable,
+            is_identity,
+            seed_value,
+            increment_value,
+            default_definition
+        ) = row
+
+        data_type_upper = str(data_type).upper()
+
+        if data_type_upper in ("VARCHAR", "CHAR", "VARBINARY", "BINARY"):
+            if max_length == -1:
+                type_def = f"{data_type_upper}(MAX)"
+            else:
+                type_def = f"{data_type_upper}({max_length})"
+
+        elif data_type_upper in ("NVARCHAR", "NCHAR"):
+            if max_length == -1:
+                type_def = f"{data_type_upper}(MAX)"
+            else:
+                type_def = f"{data_type_upper}({max_length // 2})"
+
+        elif data_type_upper in ("DECIMAL", "NUMERIC"):
+            type_def = f"{data_type_upper}({precision},{scale})"
+
+        elif data_type_upper in ("DATETIME2", "DATETIMEOFFSET", "TIME"):
+            type_def = f"{data_type_upper}({scale})"
+
+        else:
+            type_def = data_type_upper
+
+        col_def = f"[{column_name}] {type_def}"
+
+        if is_identity:
+            seed = int(seed_value) if seed_value is not None else 1
+            inc = int(increment_value) if increment_value is not None else 1
+            col_def += f" IDENTITY({seed},{inc})"
+
+        if default_definition:
+            col_def += f" DEFAULT {default_definition}"
+
+        col_def += " NULL" if is_nullable else " NOT NULL"
+        column_lines.append(col_def)
+
+    # -------------------------
+    # PK / UQ
+    # -------------------------
+    sql_key_constraints = """
+    SELECT
+        kc.name AS constraint_name,
+        kc.type AS constraint_type,
+        ic.key_ordinal,
+        c.name AS column_name
+    FROM sys.key_constraints kc
+    INNER JOIN sys.tables t
+        ON kc.parent_object_id = t.object_id
+    INNER JOIN sys.schemas s
+        ON t.schema_id = s.schema_id
+    INNER JOIN sys.index_columns ic
+        ON kc.parent_object_id = ic.object_id
+       AND kc.unique_index_id = ic.index_id
+    INNER JOIN sys.columns c
+        ON ic.object_id = c.object_id
+       AND ic.column_id = c.column_id
+    WHERE s.name = ?
+      AND t.name = ?
+    ORDER BY kc.name, ic.key_ordinal;
+    """
+    cursor.execute(sql_key_constraints, schema_name, table_name)
+    key_rows = cursor.fetchall()
+
+    key_constraints = {}
+    for constraint_name, constraint_type, key_ordinal, column_name in key_rows:
+        key_constraints.setdefault(
+            constraint_name,
+            {"type": constraint_type, "columns": []}
+        )
+        key_constraints[constraint_name]["columns"].append(f"[{column_name}]")
+
+    constraint_lines = []
+
+    for constraint_name, info in key_constraints.items():
+        cols = ", ".join(info["columns"])
+        if info["type"] == "PK":
+            constraint_lines.append(
+                f"CONSTRAINT [{constraint_name}] PRIMARY KEY ({cols})"
+            )
+        elif info["type"] == "UQ":
+            constraint_lines.append(
+                f"CONSTRAINT [{constraint_name}] UNIQUE ({cols})"
+            )
+
+    # -------------------------
+    # CHECK constraints
+    # -------------------------
+    sql_check_constraints = """
+    SELECT
+        cc.name AS constraint_name,
+        CAST(cc.definition AS NVARCHAR(MAX)) AS definition
+    FROM sys.check_constraints cc
+    INNER JOIN sys.tables t
+        ON cc.parent_object_id = t.object_id
+    INNER JOIN sys.schemas s
+        ON t.schema_id = s.schema_id
+    WHERE s.name = ?
+      AND t.name = ?
+    ORDER BY cc.name;
+    """
+    cursor.execute(sql_check_constraints, schema_name, table_name)
+    check_rows = cursor.fetchall()
+
+    for constraint_name, definition in check_rows:
+        constraint_lines.append(
+            f"CONSTRAINT [{constraint_name}] CHECK {definition}"
+        )
+
+    # -------------------------
+    # FK constraints
+    # -------------------------
+    sql_foreign_keys = """
+    SELECT
+        fk.name AS constraint_name,
+        fkc.constraint_column_id,
+        pc.name AS parent_column_name,
+        rs.name AS ref_schema_name,
+        rt.name AS ref_table_name,
+        rc.name AS ref_column_name
+    FROM sys.foreign_keys fk
+    INNER JOIN sys.foreign_key_columns fkc
+        ON fk.object_id = fkc.constraint_object_id
+    INNER JOIN sys.tables pt
+        ON fk.parent_object_id = pt.object_id
+    INNER JOIN sys.schemas ps
+        ON pt.schema_id = ps.schema_id
+    INNER JOIN sys.columns pc
+        ON fkc.parent_object_id = pc.object_id
+       AND fkc.parent_column_id = pc.column_id
+    INNER JOIN sys.tables rt
+        ON fkc.referenced_object_id = rt.object_id
+    INNER JOIN sys.schemas rs
+        ON rt.schema_id = rs.schema_id
+    INNER JOIN sys.columns rc
+        ON fkc.referenced_object_id = rc.object_id
+       AND fkc.referenced_column_id = rc.column_id
+    WHERE ps.name = ?
+      AND pt.name = ?
+    ORDER BY fk.name, fkc.constraint_column_id;
+    """
+    cursor.execute(sql_foreign_keys, schema_name, table_name)
+    fk_rows = cursor.fetchall()
+
+    fk_constraints = {}
+    for (
+        constraint_name,
+        constraint_column_id,
+        parent_column_name,
+        ref_schema_name,
+        ref_table_name,
+        ref_column_name
+    ) in fk_rows:
+        fk_constraints.setdefault(
+            constraint_name,
+            {
+                "parent_cols": [],
+                "ref_schema": ref_schema_name,
+                "ref_table": ref_table_name,
+                "ref_cols": []
+            }
+        )
+        fk_constraints[constraint_name]["parent_cols"].append(f"[{parent_column_name}]")
+        fk_constraints[constraint_name]["ref_cols"].append(f"[{ref_column_name}]")
+
+    for constraint_name, info in fk_constraints.items():
+        parent_cols = ", ".join(info["parent_cols"])
+        ref_cols = ", ".join(info["ref_cols"])
+        constraint_lines.append(
+            f"CONSTRAINT [{constraint_name}] FOREIGN KEY ({parent_cols}) "
+            f"REFERENCES [{info['ref_schema']}].[{info['ref_table']}] ({ref_cols})"
+        )
+
+    # -------------------------
+    # final ddl
+    # -------------------------
+    all_lines = column_lines + constraint_lines
+
+    ddl = (
+        f"CREATE TABLE [{schema_name}].[{table_name}] (\n    " +
+        ",\n    ".join(all_lines) +
+        "\n);"
+    )
+
+    return ddl
