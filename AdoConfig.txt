@@ -6,17 +6,14 @@ trigger:
     include:
       - '**/*.sql'
 
-# Prevent pipeline from running during PR validation.
-# It will run only after merge/push into test.
 pr: none
 
 pool:
   vmImage: 'windows-latest'
 
 variables:
-- group: sql-secrets
+- group: sql-secrets-test
 
-# Modify this order whenever you need to change dependency execution order.
 - name: SQL_DEPLOYMENT_ORDER
   value: 'TBL_,VW_,SP_,FN_,TSK_,GRANT_'
 
@@ -71,14 +68,6 @@ steps:
       Write-Host "Detecting changed SQL files"
       Write-Host "=========================================="
 
-      # For a normal PR merge commit:
-      # HEAD   = current merge commit on test
-      # HEAD^1 = test branch before PR merge
-      # HEAD^2 = PR source branch tip
-      #
-      # This compares the target branch before merge vs after merge.
-      # --diff-filter=A means Added files only.
-      # Change A to AM if you want Added + Modified files.
       Write-Host "Running:"
       Write-Host "git diff --name-only --diff-filter=A HEAD^1 HEAD"
 
@@ -122,6 +111,7 @@ steps:
 
       foreach ($file in $changedFiles) {
           $fileName = [System.IO.Path]::GetFileName($file)
+
           Write-Host "File path: $file"
           Write-Host "File name: $fileName"
 
@@ -152,7 +142,7 @@ steps:
 
           Write-Host ""
           Write-Host "------------------------------------------"
-          Write-Host "Processing prefix: $prefix"
+          Write-Host "Processing prefix: ${prefix}"
           Write-Host "------------------------------------------"
 
           $filesForPrefix = $changedFiles |
@@ -163,11 +153,11 @@ steps:
               Sort-Object
 
           if (-not $filesForPrefix) {
-              Write-Host "No files found for prefix: $prefix"
+              Write-Host "No files found for prefix: ${prefix}"
               continue
           }
 
-          Write-Host "Files to execute for prefix $prefix:"
+          Write-Host "Files to execute for prefix ${prefix}:"
           $filesForPrefix | ForEach-Object { Write-Host " - $_" }
 
           foreach ($file in $filesForPrefix) {
@@ -232,19 +222,3 @@ steps:
     SQL_DB: $(SQL_DB)
     SQL_USER: $(SQL_USER)
     SQL_PASSWORD: $(SQL_PASSWORD)
-
-
-
-Generating script.
-========================== Starting Command Output ===========================
-"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command ". 'D:\a\_temp\2191c7b2-9dd5-4051-a593-154a29f1a3df.ps1'"
-At D:\a\_temp\2191c7b2-9dd5-4051-a593-154a29f1a3df.ps1:139 char:45
-+     Write-Host "Files to execute for prefix $prefix:"
-+                                             ~~~~~~~~
-Variable reference is not valid. ':' was not followed by a valid variable name character. Consider using ${} to 
-delimit the name.
-    + CategoryInfo          : ParserError: (:) [], ParseException
-    + FullyQualifiedErrorId : InvalidVariableReferenceWithDrive
- 
-##[error]PowerShell exited with code '1'.
-
