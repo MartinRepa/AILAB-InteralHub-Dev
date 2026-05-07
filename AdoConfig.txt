@@ -232,3 +232,19 @@ steps:
     SQL_DB: $(SQL_DB)
     SQL_USER: $(SQL_USER)
     SQL_PASSWORD: $(SQL_PASSWORD)
+
+
+
+Generating script.
+========================== Starting Command Output ===========================
+"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command ". 'D:\a\_temp\2191c7b2-9dd5-4051-a593-154a29f1a3df.ps1'"
+At D:\a\_temp\2191c7b2-9dd5-4051-a593-154a29f1a3df.ps1:139 char:45
++     Write-Host "Files to execute for prefix $prefix:"
++                                             ~~~~~~~~
+Variable reference is not valid. ':' was not followed by a valid variable name character. Consider using ${} to 
+delimit the name.
+    + CategoryInfo          : ParserError: (:) [], ParseException
+    + FullyQualifiedErrorId : InvalidVariableReferenceWithDrive
+ 
+##[error]PowerShell exited with code '1'.
+
