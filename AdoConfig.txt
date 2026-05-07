@@ -1,28 +1,271 @@
-Starting: Run changed SQL scripts in dependency order
-==============================================================================
-Task         : PowerShell
-Description  : Run a PowerShell script on Linux, macOS, or Windows
-Version      : 2.268.1
-Author       : Microsoft Corporation
-Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/powershell
-==============================================================================
-Generating script.
-========================== Starting Command Output ===========================
-"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command ". 'D:\a\_temp\a7129dee-3a18-4c35-89ed-02f3b8c55196.ps1'"
-==========================================
-Pipeline debug information
-==========================================
-Build.SourceBranch: refs/heads/dev
-Build.SourceBranchName: dev
-Build.SourceVersion: 3f5ed7575ff59df98a02eba7963fbf582fa5685f
-Build.Reason: IndividualCI
-System.PullRequest.PullRequestId: 
-System.PullRequest.SourceBranch: 
-System.PullRequest.TargetBranch: 
+trigger:
+  branches:
+    include:
+      - dev
+  paths:
+    include:
+      - '**/*.sql'
 
-==========================================
-Branch validation
-==========================================
-WARNING: This pipeline is configured for dev branch, but current branch is: refs/heads/dev
-WARNING: Stopping without deployment.
-Finishing: Run changed SQL scripts in dependency order
+pr: none
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+- group: sql-secrets
+
+- name: DEPLOY_BRANCH
+  value: 'dev'
+
+- name: SQL_DEPLOYMENT_ORDER
+  value: 'TBL_,VW_,SP_,FN_,TSK_,GRANT_'
+
+steps:
+
+- checkout: self
+  fetchDepth: 0
+  fetchTags: false
+
+- task: PowerShell@2
+  displayName: 'Run changed SQL scripts in dependency order'
+  inputs:
+    targetType: 'inline'
+    script: |
+
+      $ErrorActionPreference = "Stop"
+
+      $deployBranch = "$(DEPLOY_BRANCH)"
+      $expectedBranchRef = "refs/heads/$deployBranch"
+
+      Write-Host "=========================================="
+      Write-Host "Pipeline debug information"
+      Write-Host "=========================================="
+
+      Write-Host "Configured deployment branch: $deployBranch"
+      Write-Host "Expected branch ref: $expectedBranchRef"
+      Write-Host "Build.SourceBranch: $env:BUILD_SOURCEBRANCH"
+      Write-Host "Build.SourceBranchName: $env:BUILD_SOURCEBRANCHNAME"
+      Write-Host "Build.SourceVersion: $env:BUILD_SOURCEVERSION"
+      Write-Host "Build.Reason: $env:BUILD_REASON"
+      Write-Host "System.PullRequest.PullRequestId: $env:SYSTEM_PULLREQUEST_PULLREQUESTID"
+      Write-Host "System.PullRequest.SourceBranch: $env:SYSTEM_PULLREQUEST_SOURCEBRANCH"
+      Write-Host "System.PullRequest.TargetBranch: $env:SYSTEM_PULLREQUEST_TARGETBRANCH"
+
+      Write-Host ""
+      Write-Host "Current Git branch:"
+      git branch --show-current
+
+      Write-Host ""
+      Write-Host "Latest commit:"
+      git log -1 --oneline
+
+      Write-Host ""
+      Write-Host "Latest 10 commits:"
+      git log -10 --oneline --decorate --graph
+
+      Write-Host ""
+      Write-Host "Commit parents of HEAD:"
+      git show --no-patch --pretty=%P HEAD
+
+      Write-Host ""
+      Write-Host "Repository SQL files:"
+      git ls-files "*.sql"
+
+      Write-Host ""
+      Write-Host "=========================================="
+      Write-Host "Branch validation"
+      Write-Host "=========================================="
+
+      if ($env:BUILD_SOURCEBRANCH -ne $expectedBranchRef) {
+          Write-Warning "This pipeline is configured for branch '$deployBranch', but current branch is: $env:BUILD_SOURCEBRANCH"
+          Write-Warning "Stopping without deployment."
+          exit 0
+      }
+
+      Write-Host "Correct branch detected: $deployBranch"
+
+      Write-Host ""
+      Write-Host "=========================================="
+      Write-Host "Detecting changed SQL files"
+      Write-Host "=========================================="
+
+      $parentsRaw = git show --no-patch --pretty=%P HEAD
+      $parents = $parentsRaw.Split(" ", [System.StringSplitOptions]::RemoveEmptyEntries)
+      $parentCount = $parents.Count
+
+      Write-Host "HEAD parent count: $parentCount"
+      Write-Host "HEAD parents: $parentsRaw"
+
+      if ($parentCount -ge 1) {
+          $diffBase = "HEAD^1"
+          Write-Host "Using diff base: $diffBase"
+      }
+      else {
+          Write-Warning "HEAD has no parent commit. Cannot compare changes."
+          exit 0
+      }
+
+      Write-Host ""
+      Write-Host "All files changed between $diffBase and HEAD:"
+      $allChangedFiles = git diff --name-only $diffBase HEAD
+
+      if ($allChangedFiles) {
+          $allChangedFiles | ForEach-Object { Write-Host " - $_" }
+      }
+      else {
+          Write-Host "No files changed between $diffBase and HEAD."
+      }
+
+      Write-Host ""
+      Write-Host "Added files only between $diffBase and HEAD:"
+      $addedFiles = git diff --name-only --diff-filter=A $diffBase HEAD
+
+      if ($addedFiles) {
+          $addedFiles | ForEach-Object { Write-Host " - $_" }
+      }
+      else {
+          Write-Host "No added files found."
+      }
+
+      Write-Host ""
+      Write-Host "Added SQL files detected:"
+      $changedFiles = $addedFiles | Where-Object { $_ -like "*.sql" }
+
+      if ($changedFiles) {
+          $changedFiles | ForEach-Object { Write-Host " - $_" }
+      }
+      else {
+          Write-Host "No added SQL files detected."
+          Write-Host "Exiting without deployment."
+          exit 0
+      }
+
+      Write-Host ""
+      Write-Host "=========================================="
+      Write-Host "Deployment order"
+      Write-Host "=========================================="
+
+      $deploymentOrder = "$(SQL_DEPLOYMENT_ORDER)".Split(",") |
+          ForEach-Object { $_.Trim() } |
+          Where-Object { $_ -ne "" }
+
+      $deploymentOrder | ForEach-Object { Write-Host " - $_" }
+
+      Write-Host ""
+      Write-Host "=========================================="
+      Write-Host "Classifying changed SQL files by prefix"
+      Write-Host "=========================================="
+
+      foreach ($file in $changedFiles) {
+          $fileName = [System.IO.Path]::GetFileName($file)
+
+          Write-Host "File path: $file"
+          Write-Host "File name: $fileName"
+
+          $matchedPrefix = $deploymentOrder |
+              Where-Object {
+                  $fileName.StartsWith($_, [System.StringComparison]::OrdinalIgnoreCase)
+              } |
+              Select-Object -First 1
+
+          if ($matchedPrefix) {
+              Write-Host "Matched prefix: $matchedPrefix"
+          }
+          else {
+              Write-Warning "No prefix matched for file: $file"
+          }
+
+          Write-Host ""
+      }
+
+      $executedFiles = New-Object System.Collections.Generic.HashSet[string]
+
+      Write-Host ""
+      Write-Host "=========================================="
+      Write-Host "Executing SQL files"
+      Write-Host "=========================================="
+
+      foreach ($prefix in $deploymentOrder) {
+
+          Write-Host ""
+          Write-Host "------------------------------------------"
+          Write-Host "Processing prefix: ${prefix}"
+          Write-Host "------------------------------------------"
+
+          $filesForPrefix = $changedFiles |
+              Where-Object {
+                  $fileName = [System.IO.Path]::GetFileName($_)
+                  $fileName.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)
+              } |
+              Sort-Object
+
+          if (-not $filesForPrefix) {
+              Write-Host "No files found for prefix: ${prefix}"
+              continue
+          }
+
+          Write-Host "Files to execute for prefix ${prefix}:"
+          $filesForPrefix | ForEach-Object { Write-Host " - $_" }
+
+          foreach ($file in $filesForPrefix) {
+
+              Write-Host ""
+              Write-Host "Executing SQL file:"
+              Write-Host "$file"
+
+              if (-not (Test-Path $file)) {
+                  Write-Error "File does not exist in workspace: $file"
+                  exit 1
+              }
+
+              sqlcmd `
+                -S "$env:SQL_SERVER" `
+                -d "$env:SQL_DB" `
+                -U "$env:SQL_USER" `
+                -P "$env:SQL_PASSWORD" `
+                -i "$file" `
+                -b `
+                -r 1
+
+              if ($LASTEXITCODE -ne 0) {
+                  Write-Error "SQL execution failed for file: $file"
+                  exit $LASTEXITCODE
+              }
+
+              Write-Host "Successfully executed: $file"
+
+              [void]$executedFiles.Add($file)
+          }
+      }
+
+      Write-Host ""
+      Write-Host "=========================================="
+      Write-Host "Checking unmatched files"
+      Write-Host "=========================================="
+
+      $unmatchedFiles = $changedFiles | Where-Object { -not $executedFiles.Contains($_) }
+
+      if ($unmatchedFiles) {
+          Write-Warning "The following SQL files did not match any configured prefix:"
+          $unmatchedFiles | ForEach-Object { Write-Warning " - $_" }
+
+          Write-Error "Deployment stopped because some SQL files were not matched to dependency order."
+          exit 1
+      }
+
+      Write-Host ""
+      Write-Host "=========================================="
+      Write-Host "Deployment summary"
+      Write-Host "=========================================="
+
+      Write-Host "Executed files:"
+      $executedFiles | ForEach-Object { Write-Host " - $_" }
+
+      Write-Host ""
+      Write-Host "SQL deployment completed successfully."
+
+  env:
+    SQL_SERVER: $(SQL_SERVER)
+    SQL_DB: $(SQL_DB)
+    SQL_USER: $(SQL_USER)
+    SQL_PASSWORD: $(SQL_PASSWORD)
