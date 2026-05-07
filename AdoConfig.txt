@@ -1,38 +1,37 @@
-Starting: Run changed SQL scripts in dependency order
-==============================================================================
-Task         : PowerShell
-Description  : Run a PowerShell script on Linux, macOS, or Windows
-Version      : 2.268.1
-Author       : Microsoft Corporation
-Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/powershell
-==============================================================================
-Generating script.
-========================== Starting Command Output ===========================
-"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command ". 'D:\a\_temp\cd49c9c3-9a4f-4583-ab31-b90c289bf452.ps1'"
+
+ - GRANT_
+
 ==========================================
-Pipeline debug information
+Classifying changed SQL files by prefix
 ==========================================
-Configured deployment branch: dev
-Expected branch ref: refs/heads/dev
-Build.SourceBranch: refs/heads/dev
-Build.SourceBranchName: dev
-Build.SourceVersion: e3570b8a880c5c92c71303fcb82bbfb97e157ada
-Build.Reason: IndividualCI
-System.PullRequest.PullRequestId: 
-System.PullRequest.SourceBranch: 
-System.PullRequest.TargetBranch: 
+File path: ***/Table/TBL_02_TEST_TABLE.sql
+File name: TBL_02_TEST_TABLE.sql
+Matched prefix: TBL_
 
-Current Git branch:
 
-Latest commit:
-e3570b8 Merged PR 13: Added TBL_02_TEST_TABLE.sql
+==========================================
+Executing SQL files
+==========================================
 
-Latest 10 commits:
-*   e3570b8 (HEAD, origin/dev) Merged PR 13: Added TBL_02_TEST_TABLE.sql
-|\  
-| * 304fe84 (origin/deploy-test-pipeline) Added TBL_02_TEST_TABLE.sql
-* | 4fd8a1d Merged PR 12: Updated TBL_01_TEST_TABLE.sql
-|\| 
-| * d96919e Updated TBL_01_TEST_TABLE.sql
-* | 6a32bc7 Updated azure-pipelines.yml
-* | 3f5ed75 Merged PR 11: Updated TBL_01_TEST_TABLE.sql
+------------------------------------------
+Processing prefix: TBL_
+------------------------------------------
+Files to execute for prefix TBL_:
+ - ***/Table/TBL_02_TEST_TABLE.sql
+
+Executing SQL file:
+***/Table/TBL_02_TEST_TABLE.sql
+Sqlcmd: Error: Microsoft ODBC Driver 17 for SQL Server : Named Pipes Provider: Could not open a connection to SQL Server [53]. .
+Sqlcmd: Error: Microsoft ODBC Driver 17 for SQL Server : Login timeout expired.
+Sqlcmd: Error: Microsoft ODBC Driver 17 for SQL Server : A network-related or instance-specific error has occurred while establishing a connection to SQL Server. Server is not found or not accessible. Check if instance name is correct and if SQL Server is configured to allow remote connections. For more information see SQL Server Books Online..
+D:\a\_temp\cd49c9c3-9a4f-4583-ab31-b90c289bf452.ps1 : SQL execution failed for file: 
+***/Table/TBL_02_TEST_TABLE.sql
+At line:1 char:1
++ . 'D:\a\_temp\cd49c9c3-9a4f-4583-ab31-b90c289bf452.ps1'
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [Write-Error], WriteErrorException
+    + FullyQualifiedErrorId : Microsoft.PowerShell.Commands.WriteErrorException,cd49c9c3-9a4f-4583-ab31-b90c289bf452.p 
+   s1
+ 
+##[error]PowerShell exited with code '1'.
+Finishing: Run changed SQL scripts in dependency order
