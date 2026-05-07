@@ -1,0 +1,45 @@
+trigger:
+  branches:
+    include:
+      - test
+  paths:
+    include:
+      - '**/*.sql'
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+- group: sql-secrets
+
+steps:
+
+- checkout: self
+  fetchDepth: 2   # important to compare with previous commit
+
+- task: PowerShell@2
+  displayName: 'Run changed SQL scripts only'
+  inputs:
+    targetType: 'inline'
+    script: |
+
+      Write-Host "Getting changed SQL files from last commit..."
+
+      # Get changed files between last commit and previous
+      $changedFiles = git diff --name-only HEAD~1 HEAD | Where-Object { $_ -like "*.sql" }
+
+      if (-not $changedFiles) {
+          Write-Host "No SQL files changed. Exiting."
+          exit 0
+      }
+
+      foreach ($file in $changedFiles) {
+
+          Write-Host "Executing $file ..."
+
+          sqlcmd -S $(SQL_SERVER) `
+                 -d $(SQL_DB) `
+                 -U $(SQL_USER) `
+                 -P $(SQL_PASSWORD) `
+                 -i $file
+      }
