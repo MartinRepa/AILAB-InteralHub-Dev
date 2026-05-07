@@ -6,40 +6,105 @@ trigger:
     include:
       - '**/*.sql'
 
+pr: none
+
 pool:
   vmImage: 'windows-latest'
 
 variables:
 - group: sql-secrets
 
+# Change this order later whenever needed
+- name: SQL_DEPLOYMENT_ORDER
+  value: 'TBL_,VW_,SP_,FN_,TSK_'
+
 steps:
 
 - checkout: self
-  fetchDepth: 2   # important to compare with previous commit
+  fetchDepth: 2
 
 - task: PowerShell@2
-  displayName: 'Run changed SQL scripts only'
+  displayName: 'Run changed SQL scripts in dependency order'
   inputs:
     targetType: 'inline'
     script: |
 
-      Write-Host "Getting changed SQL files from last commit..."
+      $ErrorActionPreference = "Stop"
 
-      # Get changed files between last commit and previous
-      $changedFiles = git diff --name-only HEAD~1 HEAD | Where-Object { $_ -like "*.sql" }
+      Write-Host "Getting changed SQL files from last merge/commit into test..."
+
+      # Use A = Added only
+      # If you also want modified SQL files, change A to AM
+      $changedFiles = git diff --name-only --diff-filter=A HEAD~1 HEAD |
+          Where-Object { $_ -like "*.sql" }
 
       if (-not $changedFiles) {
-          Write-Host "No SQL files changed. Exiting."
+          Write-Host "No new SQL files found. Exiting."
           exit 0
       }
 
-      foreach ($file in $changedFiles) {
+      Write-Host "Changed SQL files:"
+      $changedFiles | ForEach-Object { Write-Host " - $_" }
 
-          Write-Host "Executing $file ..."
+      $deploymentOrder = "$(SQL_DEPLOYMENT_ORDER)".Split(",") |
+          ForEach-Object { $_.Trim() } |
+          Where-Object { $_ -ne "" }
 
-          sqlcmd -S $(SQL_SERVER) `
-                 -d $(SQL_DB) `
-                 -U $(SQL_USER) `
-                 -P $(SQL_PASSWORD) `
-                 -i $file
+      Write-Host "Deployment order:"
+      $deploymentOrder | ForEach-Object { Write-Host " - $_" }
+
+      $executedFiles = New-Object System.Collections.Generic.HashSet[string]
+
+      foreach ($prefix in $deploymentOrder) {
+
+          Write-Host ""
+          Write-Host "Processing prefix: $prefix"
+
+          $filesForPrefix = $changedFiles |
+              Where-Object {
+                  $fileName = [System.IO.Path]::GetFileName($_)
+                  $fileName.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)
+              } |
+              Sort-Object
+
+          foreach ($file in $filesForPrefix) {
+
+              Write-Host "Executing $file ..."
+
+              sqlcmd `
+                -S "$env:SQL_SERVER" `
+                -d "$env:SQL_DB" `
+                -U "$env:SQL_USER" `
+                -P "$env:SQL_PASSWORD" `
+                -i "$file" `
+                -b `
+                -r 1
+
+              if ($LASTEXITCODE -ne 0) {
+                  Write-Error "Execution failed for file: $file"
+                  exit $LASTEXITCODE
+              }
+
+              [void]$executedFiles.Add($file)
+          }
       }
+
+      # Optional: handle files that do not match any known prefix
+      $unmatchedFiles = $changedFiles | Where-Object { -not $executedFiles.Contains($_) }
+
+      if ($unmatchedFiles) {
+          Write-Host ""
+          Write-Warning "Some SQL files did not match the configured deployment prefixes:"
+          $unmatchedFiles | ForEach-Object { Write-Warning " - $_" }
+
+          Write-Error "Stopping deployment because unmatched SQL files were found. Add a prefix to SQL_DEPLOYMENT_ORDER or rename the files."
+          exit 1
+      }
+
+      Write-Host ""
+      Write-Host "SQL deployment completed successfully."
+  env:
+    SQL_SERVER: $(SQL_SERVER)
+    SQL_DB: $(SQL_DB)
+    SQL_USER: $(SQL_USER)
+    SQL_PASSWORD: $(SQL_PASSWORD)
