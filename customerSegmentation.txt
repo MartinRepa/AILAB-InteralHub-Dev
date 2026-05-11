@@ -1,0 +1,434 @@
+/* =============================================================================
+Customer Segmentation — Database Extensions
+Target: SQL Server (T-SQL)
+Author: BI/MIS & Advanced Analytics
+Date:   2026
+
+## Scope
+
+1. New feature tables in FinalData:
+- Balances
+- Revenue
+1. New output table in Predict:
+- ClusterAssignments
+1. New consumption views in FinalData:
+- vw_Segmentation_Training
+- vw_Segmentation_Scoring
+- vw_Segmentation_Descriptors
+
+## Conventions
+
+- Surrogate PK: Id BIGINT IDENTITY
+- Natural key: (BasicNo, MeasurementDate) — enforced UNIQUE
+- Snapshot date: MeasurementDate (last business day of month)
+- All amounts in account currency (assumed EUR/local)
+  ============================================================================= */
+
+/* =============================================================================
+
+1. FinalData.Balances
+
+-----
+
+Holds absolute balance metrics per customer per snapshot.
+These feed the value-tier overlay (Layer 2) and the relationship-size
+features for clustering.
+============================================================================= */
+IF OBJECT_ID(‘FinalData.Balances’, ‘U’) IS NOT NULL
+DROP TABLE FinalData.Balances;
+GO
+
+CREATE TABLE FinalData.Balances
+(
+Id                          BIGINT          IDENTITY(1,1) NOT NULL,
+BasicNo                     VARCHAR(50)     NOT NULL,
+MeasurementDate             DATE            NOT NULL,
+
+```
+-- Absolute balances (snapshot point-in-time)
+TotalDepositBalance         DECIMAL(18, 2)  NULL,
+TotalLoanBalance            DECIMAL(18, 2)  NULL,
+TotalRelationshipBalance    AS (ISNULL(TotalDepositBalance, 0)
+                              + ISNULL(TotalLoanBalance, 0)) PERSISTED,
+NetPosition                 AS (ISNULL(TotalDepositBalance, 0)
+                              - ISNULL(TotalLoanBalance, 0)) PERSISTED,
+
+-- Balance composition
+CurrentAccountBalance       DECIMAL(18, 2)  NULL,
+SavingsAccountBalance       DECIMAL(18, 2)  NULL,
+TimeDepositBalance          DECIMAL(18, 2)  NULL,
+InvestmentBalance           DECIMAL(18, 2)  NULL,
+
+-- Smoothed metrics (reduce point-in-time noise)
+AvgMonthlyBalance3M         DECIMAL(18, 2)  NULL,
+AvgMonthlyBalance6M         DECIMAL(18, 2)  NULL,
+AvgMonthlyBalance12M        DECIMAL(18, 2)  NULL,
+
+-- Audit
+CreatedAt                   DATETIME2(0)    NOT NULL CONSTRAINT DF_Balances_CreatedAt DEFAULT (SYSUTCDATETIME()),
+
+CONSTRAINT PK_Balances        PRIMARY KEY CLUSTERED (Id),
+CONSTRAINT UQ_Balances_NatKey UNIQUE (BasicNo, MeasurementDate)
+```
+
+);
+GO
+
+CREATE NONCLUSTERED INDEX IX_Balances_MeasurementDate
+ON FinalData.Balances (MeasurementDate) INCLUDE (BasicNo);
+GO
+
+## /* =============================================================================
+2) FinalData.Revenue
+
+Holds profitability and revenue contribution per customer per snapshot.
+These are the primary inputs for value-based service tiering.
+============================================================================= */
+IF OBJECT_ID(‘FinalData.Revenue’, ‘U’) IS NOT NULL
+DROP TABLE FinalData.Revenue;
+GO
+
+CREATE TABLE FinalData.Revenue
+(
+Id                          BIGINT          IDENTITY(1,1) NOT NULL,
+BasicNo                     VARCHAR(50)     NOT NULL,
+MeasurementDate             DATE            NOT NULL,
+
+```
+-- Income components (last month)
+InterestIncomeLastMonth     DECIMAL(18, 2)  NULL,   -- interest earned by bank on customer's loans
+InterestExpenseLastMonth    DECIMAL(18, 2)  NULL,   -- interest paid by bank on customer's deposits
+FeeIncomeLastMonth          DECIMAL(18, 2)  NULL,   -- transaction fees, maintenance, penalties, FX
+
+-- Net contribution
+EstimatedMonthlyRevenue     AS (ISNULL(InterestIncomeLastMonth, 0)
+                              + ISNULL(FeeIncomeLastMonth, 0)
+                              - ISNULL(InterestExpenseLastMonth, 0)) PERSISTED,
+
+-- Aggregates over time windows
+TotalFeeIncome3M            DECIMAL(18, 2)  NULL,
+TotalFeeIncome6M            DECIMAL(18, 2)  NULL,
+TotalFeeIncome12M           DECIMAL(18, 2)  NULL,
+
+TotalRevenue3M              DECIMAL(18, 2)  NULL,
+TotalRevenue6M              DECIMAL(18, 2)  NULL,
+TotalRevenue12M             DECIMAL(18, 2)  NULL,
+
+-- Profitability segments (computed or assigned downstream)
+RevenueTier                 VARCHAR(20)     NULL,   -- 'High' / 'Mid' / 'Low' (filled by job)
+
+-- Audit
+CreatedAt                   DATETIME2(0)    NOT NULL CONSTRAINT DF_Revenue_CreatedAt DEFAULT (SYSUTCDATETIME()),
+
+CONSTRAINT PK_Revenue        PRIMARY KEY CLUSTERED (Id),
+CONSTRAINT UQ_Revenue_NatKey UNIQUE (BasicNo, MeasurementDate)
+```
+
+);
+GO
+
+CREATE NONCLUSTERED INDEX IX_Revenue_MeasurementDate
+ON FinalData.Revenue (MeasurementDate) INCLUDE (BasicNo);
+GO
+
+## /* =============================================================================
+3) Predict.ClusterAssignments
+
+Model output table. Each customer × snapshot × model version gets one row.
+Versioning allows running multiple models in parallel during transitions.
+============================================================================= */
+IF OBJECT_ID(‘Predict.ClusterAssignments’, ‘U’) IS NOT NULL
+DROP TABLE Predict.ClusterAssignments;
+GO
+
+CREATE TABLE Predict.ClusterAssignments
+(
+Id                          BIGINT          IDENTITY(1,1) NOT NULL,
+BasicNo                     VARCHAR(50)     NOT NULL,
+MeasurementDate             DATE            NOT NULL,
+ModelVersion                VARCHAR(20)     NOT NULL,   – e.g. ‘v1.0’, ‘v1.1’
+
+```
+-- Population label (from pre-segmentation rules)
+Population                  VARCHAR(20)     NOT NULL,   -- 'ACTIVE' / 'DORMANT' / 'NEW'
+
+-- Primary cluster assignment (only populated for ACTIVE; NULL otherwise)
+ClusterId                   INT             NULL,
+ClusterName                 VARCHAR(100)    NULL,       -- 'Digital Power Users', etc.
+
+-- Soft-assignment probabilities (if GMM is used)
+ClusterProbability          DECIMAL(5, 4)   NULL,       -- confidence in assignment
+SecondaryClusterId          INT             NULL,       -- 2nd most likely cluster
+SecondaryClusterProbability DECIMAL(5, 4)   NULL,
+
+-- Value tier overlay (Layer 2)
+ValueTier                   VARCHAR(20)     NULL,       -- 'High' / 'Mid' / 'Low'
+
+-- Final composite segment label (cluster × value tier)
+CompositeSegment            VARCHAR(120)    NULL,       -- e.g. 'Digital Power Users - High'
+
+-- Distance to cluster centroid (outlier detection)
+DistanceToCentroid          DECIMAL(10, 4)  NULL,
+IsOutlier                   BIT             NULL,
+
+-- Audit
+ScoredAt                    DATETIME2(0)    NOT NULL CONSTRAINT DF_Cluster_ScoredAt DEFAULT (SYSUTCDATETIME()),
+
+CONSTRAINT PK_ClusterAssignments PRIMARY KEY CLUSTERED (Id),
+CONSTRAINT UQ_ClusterAssignments_NatKey
+    UNIQUE (BasicNo, MeasurementDate, ModelVersion)
+```
+
+);
+GO
+
+CREATE NONCLUSTERED INDEX IX_ClusterAssignments_Snapshot
+ON Predict.ClusterAssignments (MeasurementDate, ModelVersion)
+INCLUDE (BasicNo, ClusterId, ValueTier);
+GO
+
+CREATE NONCLUSTERED INDEX IX_ClusterAssignments_Customer
+ON Predict.ClusterAssignments (BasicNo, MeasurementDate)
+INCLUDE (ClusterId, ClusterName, ValueTier);
+GO
+
+## /* =============================================================================
+4) View: FinalData.vw_Segmentation_Training
+
+Active core customers, all available snapshots, with ChurnFlg.
+Used for: model training, stability backtesting, churn × segment analysis.
+
+## Filter rules
+
+- Only ACTIVE population (DaysWithoutActivity <= 180 AND tenure >= 6 months)
+- All historical snapshots
+- Includes target ChurnFlg for downstream analysis
+  ============================================================================= */
+  IF OBJECT_ID(‘FinalData.vw_Segmentation_Training’, ‘V’) IS NOT NULL
+  DROP VIEW FinalData.vw_Segmentation_Training;
+  GO
+
+CREATE VIEW FinalData.vw_Segmentation_Training
+AS
+WITH base AS (
+SELECT
+m.Id                            AS PanelId,
+m.BasicNo,
+m.MeasurementDate,
+m.DaysWithoutActivity,
+m.HasChurnHistory,
+m.ChurnFlg,
+
+```
+    -- Tenure (assumed in CustomerTenor)
+    t.CustomerTimeWithBank          AS TenureMonths
+FROM FinalData.CustomerChurnMainPannel  m      -- rename target later
+LEFT JOIN FinalData.CustomerTenor        t
+    ON  t.BasicNo         = m.BasicNo
+    AND t.MeasurementDate = m.MeasurementDate
+```
+
+)
+SELECT
+b.BasicNo,
+b.MeasurementDate,
+
+```
+/* ---------- Role A: Clustering features ---------- */
+
+-- Product holding
+CAST(cc.HasCreditCard  AS INT)              AS PRD_Has_CreditCard,
+CAST(dc.HasDebitCard   AS INT)              AS PRD_Has_DebitCard,
+CAST(lp.HasLoanProduct AS INT)              AS PRD_Has_Loan,
+CAST(sp.HasTimeDeposit AS INT)              AS PRD_Has_TimeDeposit,
+CAST(tb.HasTibank      AS INT)              AS PRD_Has_Tibank,
+
+ISNULL(lp.NumberOfActiveLoans, 0)           AS PRD_Active_Loans_Count,
+ISNULL(lp.LoanTypeDiversity, 0)             AS PRD_Loan_Diversity,
+ISNULL(sp.NumberOfSavingsAccounts, 0)       AS PRD_Savings_Accounts_Count,
+
+( CAST(cc.HasCreditCard  AS INT)
++ CAST(dc.HasDebitCard   AS INT)
++ CAST(lp.HasLoanProduct AS INT)
++ CAST(sp.HasTimeDeposit AS INT)
++ CAST(tb.HasTibank      AS INT) )          AS PRD_Breadth_CUR,
+
+-- Balances (log-transformed for skewness)
+LOG(1 + ISNULL(bal.TotalRelationshipBalance, 0))    AS BAL_Total_Relationship_LOG,
+ISNULL(bal.NetPosition, 0)                          AS BAL_Net_Position_SIGNED,
+LOG(1 + ISNULL(bal.AvgMonthlyBalance6M, 0))         AS BAL_Avg_Monthly_6M_LOG,
+
+-- Transactions
+LOG(1 + ISNULL(tx.AverageTransactionAm, 0)
+        * ISNULL(cc.NumberOfCreditCardTra_6M, 0))   AS TXN_Total_Value_6M_LOG,
+LOG(1 + ISNULL(dc.AverageTransactionSize, 0))       AS TXN_Avg_Size_LOG,
+
+-- Card behavior
+ISNULL(cc.CreditCardUsageVsLimit, 0)        AS CRD_Usage_vs_Limit,
+CASE WHEN ISNULL(cc.CreditCardUsage, 0) = 0 THEN 0
+     ELSE cc.CashWithdrawalFromCr / cc.CreditCardUsage
+END                                         AS CRD_Cash_Intensity,
+CASE WHEN ISNULL(cc.CreditCardUsage, 0) = 0 THEN 0
+     ELSE cc.CreditCardUsageAbroad / cc.CreditCardUsage
+END                                         AS CRD_International_Share,
+
+-- Channel
+CASE WHEN ISNULL(tb.TibankUsageLast6Months, 0)
+        + ISNULL(tb.CustomerUsesDeskPayment, 0)
+        + ISNULL(tb.CustomerUsesDeskOutgoingTran, 0) = 0 THEN 0
+     ELSE tb.TibankUsageLast6Months /
+          ( tb.TibankUsageLast6Months
+          + tb.CustomerUsesDeskPayment
+          + tb.CustomerUsesDeskOutgoingTran )
+END                                         AS CHN_Digital_Share_CUR,
+
+-- Behavioral
+ISNULL(sp.SavingsGrowthRate, 0)             AS BHV_Savings_Growth,
+ISNULL(sp.WithdrawalsVsDeposits, 0)         AS BHV_Withdrawals_vs_Deposits,
+CASE WHEN ISNULL(tx.AvgSalary6Months, 0) = 0 THEN 0
+     ELSE tx.SalaryFromCompany / NULLIF(tx.AvgSalary6Months, 0)
+END                                         AS BHV_Payroll_Reliance,
+
+/* ---------- Target ---------- */
+b.ChurnFlg                                  AS TGT_ChurnFlg,
+
+/* ---------- Population label ---------- */
+CASE
+    WHEN b.DaysWithoutActivity > 180        THEN 'DORMANT'
+    WHEN b.TenureMonths < 6                 THEN 'NEW'
+    ELSE 'ACTIVE'
+END                                         AS Population
+```
+
+FROM base b
+LEFT JOIN FinalData.CreditCard      cc  ON cc.BasicNo = b.BasicNo AND cc.MeasurementDate = b.MeasurementDate
+LEFT JOIN FinalData.DebitCard       dc  ON dc.BasicNo = b.BasicNo AND dc.MeasurementDate = b.MeasurementDate
+LEFT JOIN FinalData.LoanProducts    lp  ON lp.BasicNo = b.BasicNo AND lp.MeasurementDate = b.MeasurementDate
+LEFT JOIN FinalData.SavingProduct   sp  ON sp.BasicNo = b.BasicNo AND sp.MeasurementDate = b.MeasurementDate
+LEFT JOIN FinalData.TibankPlaftorm  tb  ON tb.BasicNo = b.BasicNo AND tb.MeasurementDate = b.MeasurementDate
+LEFT JOIN FinalData.Transactions    tx  ON tx.BasicNo = b.BasicNo AND tx.MeasurementDate = b.MeasurementDate
+LEFT JOIN FinalData.Balances        bal ON bal.BasicNo = b.BasicNo AND bal.MeasurementDate = b.MeasurementDate
+WHERE
+– Active core only (NEW/DORMANT excluded from clustering)
+b.DaysWithoutActivity <= 180
+AND b.TenureMonths   >= 6;
+GO
+
+## /* =============================================================================
+5) View: FinalData.vw_Segmentation_Scoring
+
+Same features as training, but:
+- Latest snapshot only
+- No target column (production scoring)
+============================================================================= */
+IF OBJECT_ID(‘FinalData.vw_Segmentation_Scoring’, ‘V’) IS NOT NULL
+DROP VIEW FinalData.vw_Segmentation_Scoring;
+GO
+
+CREATE VIEW FinalData.vw_Segmentation_Scoring
+AS
+WITH latest AS (
+SELECT MAX(MeasurementDate) AS LastSnapshot
+FROM FinalData.CustomerChurnMainPannel
+)
+SELECT
+t.*
+FROM FinalData.vw_Segmentation_Training t
+CROSS JOIN latest l
+WHERE t.MeasurementDate = l.LastSnapshot
+AND t.Population      = ‘ACTIVE’;
+GO
+
+## /* =============================================================================
+6) View: FinalData.vw_Segmentation_Descriptors
+
+All populations (ACTIVE + DORMANT + NEW), latest snapshot.
+Contains Role B (trends, inactivity, risk) and Role C (demographics) features.
+
+## Purpose
+
+- Cluster profiling (describing who is in each cluster)
+- Simulation layer (levers are mostly here)
+- Dormant treatment (rule-based)
+  ============================================================================= */
+  IF OBJECT_ID(‘FinalData.vw_Segmentation_Descriptors’, ‘V’) IS NOT NULL
+  DROP VIEW FinalData.vw_Segmentation_Descriptors;
+  GO
+
+CREATE VIEW FinalData.vw_Segmentation_Descriptors
+AS
+WITH latest AS (
+SELECT MAX(MeasurementDate) AS LastSnapshot
+FROM FinalData.CustomerChurnMainPannel
+)
+SELECT
+m.BasicNo,
+m.MeasurementDate,
+
+```
+/* ---------- Role B: Descriptors & simulation levers ---------- */
+m.DaysWithoutActivity                       AS INA_Days_Without_Activity,
+m.HasChurnHistory                           AS RSK_Has_Churn_History,
+
+lp.HasDefaultHistory                        AS RSK_Has_Default_History,
+fe.IncreasedAccountMaint                    AS RSK_Fee_Increased_Flag,
+fe.OurFeesComparedToOth                     AS RSK_Fees_vs_Market,
+fe.OurInterestVsOtherBanks                  AS RSK_Interest_vs_Market,
+fe.AverageFeePaid                           AS RSK_Avg_Fee_Paid,
+fe.PenaltyFeesPaid                          AS RSK_Penalty_Fees_Paid,
+
+dc.DebitCardUsage6M_vs_3M                   AS TRD_DebitCard_6M_vs_3M,
+dc.ATMUsageFrequency6M                      AS TRD_ATM_6M_vs_3M,
+tb.TibankLastUsedInMonths                   AS TRD_Tibank_Recency,
+ct.ClosedProductsLast3Months                AS TRD_Closed_Product_3M,
+ct.ClosedProductsLast6Months                AS TRD_Closed_Product_6M,
+ct.NumberOfInactiveProducts                 AS TRD_Inactive_Products,
+
+/* ---------- Role C: Demographics ---------- */
+dm.Age                                      AS DEM_Age,
+dm.AgeRange                                 AS DEM_Age_Range,
+dm.EducationLevel                           AS DEM_Education,
+dm.HouseholdIncome                          AS DEM_Household_Income,
+dm.LifeStage                                AS DEM_Life_Stage,
+dm.UrbanOrRural                             AS DEM_Urban_Rural,
+dm.TimeInCurrentJob                         AS DEM_Tenure_in_Job,
+dm.CustomerOrigin                           AS DEM_Origin,
+dm.CustomerLivingRegion                     AS DEM_Region,
+dm.Gender                                   AS DEM_Gender,
+dm.MaritalStatus                            AS DEM_Marital_Status,
+dm.HasDependents                            AS DEM_Has_Dependents,
+dm.OwnsHouse                                AS DEM_Owns_House,
+dm.Occupation                               AS DEM_Occupation,
+dm.EmploymentIndustry                       AS DEM_Industry,
+ct.CustomerTimeWithBank                     AS DEM_Customer_Tenure_Months,
+
+/* ---------- Value tier inputs ---------- */
+bal.TotalRelationshipBalance                AS BAL_Total_Relationship,
+bal.NetPosition                             AS BAL_Net_Position,
+rv.EstimatedMonthlyRevenue                  AS REV_Estimated_Monthly,
+rv.TotalRevenue6M                           AS REV_Total_6M,
+
+/* ---------- Population label ---------- */
+CASE
+    WHEN m.DaysWithoutActivity > 180        THEN 'DORMANT'
+    WHEN ct.CustomerTimeWithBank < 6        THEN 'NEW'
+    ELSE 'ACTIVE'
+END                                         AS Population
+```
+
+FROM FinalData.CustomerChurnMainPannel  m
+CROSS JOIN latest                   l
+LEFT JOIN FinalData.Demography      dm  ON dm.BasicNo = m.BasicNo AND dm.MeasurementDate = m.MeasurementDate
+LEFT JOIN FinalData.CustomerTenor   ct  ON ct.BasicNo = m.BasicNo AND ct.MeasurementDate = m.MeasurementDate
+LEFT JOIN FinalData.Fees            fe  ON fe.BasicNo = m.BasicNo AND fe.MeasurementDate = m.MeasurementDate
+LEFT JOIN FinalData.LoanProducts    lp  ON lp.BasicNo = m.BasicNo AND lp.MeasurementDate = m.MeasurementDate
+LEFT JOIN FinalData.DebitCard       dc  ON dc.BasicNo = m.BasicNo AND dc.MeasurementDate = m.MeasurementDate
+LEFT JOIN FinalData.TibankPlaftorm  tb  ON tb.BasicNo = m.BasicNo AND tb.MeasurementDate = m.MeasurementDate
+LEFT JOIN FinalData.Balances        bal ON bal.BasicNo = m.BasicNo AND bal.MeasurementDate = m.MeasurementDate
+LEFT JOIN FinalData.Revenue         rv  ON rv.BasicNo = m.BasicNo AND rv.MeasurementDate = m.MeasurementDate
+WHERE m.MeasurementDate = l.LastSnapshot;
+GO
+
+/* =============================================================================
+END OF SCRIPT
+============================================================================= */
