@@ -1,0 +1,162 @@
+Below is the Azure provisioning runbook for migrating the CV anonymization + scoring solution into the organization Azure portal.
+
+The pipeline has already been proven end-to-end locally: DOCX extraction, anonymization, category scoring, JD scoring, and compliance note were all produced successfully in the test output.
+
+1. Target Azure architecture
+CV / JD source
+   ↓
+Local or app extraction layer
+   ↓
+Azure AI Language PII redaction
+   ↓
+Custom redaction rules in Python
+   ↓
+Azure OpenAI / Foundry model scoring
+   ↓
+JSON screening result
+
+For the current version, we did not provision Document Intelligence, Storage, Key Vault, or Azure Functions yet. We tested locally using .env secrets.
+
+2. Azure resources to provision
+Required now
+Resource	Purpose
+Resource Group	Container for all resources
+Azure AI Language / Azure AI Services	PII detection and redaction
+Azure OpenAI / Azure AI Foundry resource	Candidate-to-category and candidate-to-JD scoring
+GPT model deployment	gpt-4.1-mini deployed as Data Zone Standard
+Content guardrail	DefaultV2 guardrails
+Recommended for organization production
+Resource	Purpose
+Azure Key Vault	Store API keys/secrets
+Storage Account	Store raw CVs, anonymized CVs, audit JSON outputs
+Application Insights / Log Analytics	Monitoring and errors
+Azure Function or Container App	Run the pipeline in Azure
+Private Endpoints / VNet	Production-grade network isolation
+3. Resource group
+
+Create a dedicated resource group.
+
+Recommended:
+
+rg-cv-anonymizer-prod
+
+Azure Portal path:
+
+Azure Portal
+→ Resource groups
+→ Create
+
+Suggested values:
+
+Subscription: organization subscription
+Resource group: rg-cv-anonymizer-prod
+Region: West Europe
+
+Use the same region where possible for the AI Language resource and other supporting services.
+
+4. Azure AI Language / PII redaction resource
+
+This is the service used for PII detection and redaction before sending text to Azure OpenAI. Azure AI Language PII can evaluate unstructured text and identify/redact sensitive information across predefined PII categories.
+
+Azure Portal path:
+
+Azure Portal
+→ Create a resource
+→ Search: Language service
+→ Create
+
+Recommended values:
+
+Resource group: rg-cv-anonymizer-prod
+Region: West Europe
+Name: lang-cv-anonymizer-prod
+Pricing tier: Standard S
+
+For testing, Free F0 is acceptable. For organization migration, use Standard S.
+
+After creation, collect:
+
+AZURE_LANGUAGE_ENDPOINT
+AZURE_LANGUAGE_KEY
+
+In the local .env, this was configured as:
+
+AZURE_LANGUAGE_ENDPOINT=https://<language-resource-name>.cognitiveservices.azure.com/
+AZURE_LANGUAGE_KEY=<language-key>
+
+In production, store these in Key Vault, not directly in .env.
+
+5. Azure OpenAI / Azure AI Foundry resource
+
+This is used for:
+
+1. CV → banking job category scoring
+2. CV → specific job description scoring
+
+Azure Portal path:
+
+Azure Portal
+→ Create a resource
+→ Search: Azure OpenAI
+→ Create
+
+Microsoft’s Azure OpenAI setup separates resource creation from model deployment; you create the resource first, then deploy a model.
+
+Recommended values:
+
+Resource group: rg-cv-anonymizer-prod
+Region: West Europe
+Name: oai-cv-screening-prod
+Pricing tier: Standard S0
+
+In our test, the callable Foundry endpoint became:
+
+https://ai-cv-anonymizer-resource.services.ai.azure.com/openai/v1/
+
+So in the organization portal, after deployment, make sure you copy the actual target URI from the deployment details.
+
+6. Deploy the model in Foundry
+
+After creating the Azure OpenAI / Foundry resource:
+
+Open resource
+→ Go to Foundry portal
+→ Model catalog
+→ Search: gpt-4.1-mini
+→ Deploy
+→ Custom settings
+
+Use these model deployment settings:
+
+Model: gpt-4.1-mini
+Model version: 2025-04-14
+Deployment name: gpt-4-1-mini-cv-score
+Deployment type: Data Zone Standard
+Data zone: EUR Data Zone
+Tokens per minute: 50,000
+Model version upgrade policy: Opt out of automatic model version upgrades
+Guardrails: DefaultV2
+
+Why Data Zone Standard: Microsoft documents that deployment data processing locations include global, data zone, and Azure geography options, and DataZone deployments keep prompts/responses within the specified data zone.
+
+Why 50,000 TPM: TPM and RPM are quota/rate limits defined by region, subscription, and model/deployment type; they control throughput, while billing is based on actual usage.
+
+Why opt out of auto-upgrade: for recruitment scoring, model behavior should remain stable and auditable. Upgrade only after testing with HR-approved validation samples.
+
+Why DefaultV2 guardrails: Azure OpenAI provides default guardrails/content filtering to mitigate safety risks; the default content filter is appropriate for the first production version.
+
+7. Azure OpenAI endpoint configuration
+
+Because the deployment was created in the newer Foundry-style endpoint, the working configuration used the v1 Responses API style.
+
+Working .env format:
+
+AZURE_OPENAI_BASE_URL=https://ai-cv-anonymizer-resource.services.ai.azure.com/openai/v1/
+AZURE_OPENAI_KEY=<foundry-or-azure-ai-resource-key>
+AZURE_OPENAI_DEPLOYMENT=gpt-4-1-mini-cv-score
+
+Important:
+
+Do not use the Foundry portal URL.
+Do not use the old openai.azure.com endpoint unless the deployment is actually under that endpoint.
+Do not use the Azure AI Language key for Azure OpenAI.
